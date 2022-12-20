@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/GLViewer" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
