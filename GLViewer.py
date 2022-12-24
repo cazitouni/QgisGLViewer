@@ -22,148 +22,20 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDesktopWidget, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QFileDialog, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog
-from qgis.gui import QgsMapTool
-from qgis.core import Qgis
-import psycopg2
+from qgis.PyQt.QtWidgets import QAction, QDesktopWidget
 
+
+from qgis.PyQt.QtGui import QIcon
+
+
+from .Helpers import get_connection
+from .Windows import  PointTool
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
 import os
-from .EquiView360 import GLWidget
-from .dbconnector import connector
 
-class ConnectionDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # Create the label and line edit widgets for the host, port, database, username, and password
-        label_host = QLabel("Host:")
-        self.lineEdit_host = QLineEdit()
-        label_port = QLabel("Port:")
-        self.lineEdit_port = QLineEdit()
-        label_database = QLabel("Database:")
-        self.lineEdit_database = QLineEdit()
-        label_username = QLabel("Username:")
-        self.lineEdit_username = QLineEdit()
-        label_password = QLabel("Password:")
-        self.lineEdit_password = QLineEdit()
-        self.lineEdit_password.setEchoMode(QLineEdit.Password)
-
-        # Create the "Connect" and "Cancel" buttons
-        button_connect = QPushButton("Connect")
-        button_cancel = QPushButton("Cancel")
-
-        # Create a grid layout to hold the widgets
-        grid = QGridLayout()
-        grid.addWidget(label_host, 0, 0)
-        grid.addWidget(self.lineEdit_host, 0, 1)
-        grid.addWidget(label_port, 1, 0)
-        grid.addWidget(self.lineEdit_port, 1, 1)
-        grid.addWidget(label_database, 2, 0)
-        grid.addWidget(self.lineEdit_database, 2, 1)
-        grid.addWidget(label_username, 3, 0)
-        grid.addWidget(self.lineEdit_username, 3, 1)
-        grid.addWidget(label_password, 4, 0)
-        grid.addWidget(self.lineEdit_password, 4, 1)
-        grid.addWidget(button_connect, 5, 0)
-        grid.addWidget(button_cancel, 5, 1)
-
-        # Set the layout for the dialog
-        self.setLayout(grid)
-
-        # Connect the "Connect" button to the "accept" signal
-        button_connect.clicked.connect(self.accept)
-
-        # Connect the "Cancel" button to the "reject" signal
-        button_cancel.clicked.connect(self.reject)
-
-    def get_connection(self):
-        """
-        Get the connection parameters entered by the user.
-        Returns:
-            A tuple containing the host, port, database, username, and password.
-        """
-        host = self.lineEdit_host.text()
-        port = self.lineEdit_port.text()
-        database = self.lineEdit_database.text()
-        username = self.lineEdit_username.text()
-        password = self.lineEdit_password.text()
-        return host, port, database, username, password
-
-def get_connection(iface):
-    dialog = ConnectionDialog()
-    result = dialog.exec_()
-    if result == QDialog.Accepted:
-        host, port, database, username, password = dialog.get_connection()
-        try:
-            conn = psycopg2.connect(
-                host=host,
-                port=port,
-                database=database,
-                user=username,
-                password=password
-            )
-            return conn
-        except psycopg2.Error:
-            iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
-    return None
-
-class MainWindow(QMainWindow):
-    def __init__(self, iface, url):
-        super().__init__()
-
-        # Create the horizontal layout for the list widgets
-        horizontalLayout = QHBoxLayout()
-        comboBox1 = QComboBox()
-        comboBox2 = QComboBox()
-        comboBox3 = QComboBox()
-        horizontalLayout.addWidget(comboBox1)
-        horizontalLayout.addWidget(comboBox2)
-        horizontalLayout.addWidget(comboBox3)
-
-        # Create the vertical layout for the GLWidget and list widgets
-        verticalLayout = QVBoxLayout()
-        self.gl_widget = GLWidget(self, iface, url)
-        verticalLayout.addWidget(self.gl_widget)
-        verticalLayout.addLayout(horizontalLayout)
-
-        # Set the main window's central widget and layout
-        centralWidget = QWidget()
-        centralWidget.setLayout(verticalLayout)
-        self.setCentralWidget(centralWidget)
-
-        # Set the window properties
-        self.setWindowTitle("Equirectangular 360° Viewer")
-        self.setWindowIcon(QIcon("icon.png"))
-        self.setGeometry(0, 0, 1080, 720)
-
-class PointTool(QgsMapTool):  
-
-    def __init__(self, canvas, iface, cursor):
-        QgsMapTool.__init__(self, canvas)
-        self.iface = iface
-        self.canvas = canvas
-        self.cursor = cursor
-
-    def canvasPressEvent(self, event):
-        t = event.pos().x()
-        w = event.pos().y()
-        point = self.canvas.getCoordinateTransform().toMapCoordinates(t, w)
-        url = connector(point.x(), point.y(), self.cursor)
-        if url != 0 :
-            self.dlg = MainWindow(self.iface, url)
-            screen = QDesktopWidget().screenGeometry()
-            size = self.dlg.geometry()
-            x = (screen.width() - size.width()) / 2
-            y = (screen.height() - size.height()) / 2
-            self.dlg.move(x, y)
-            self.dlg.show()
-            self.iface.mapCanvas().unsetMapTool(self)
-        else : 
-            self.iface.messageBar().pushMessage("No image for this coordinates", level=Qgis.Info)
   
 class GLViewer:
     """QGIS Plugin Implementation."""
@@ -180,8 +52,6 @@ class GLViewer:
         self.iface = iface
         self.canvas = iface.mapCanvas()
         self.conn = None
-        #conn = psycopg2.connect(dbname='siglc', user='345567', host='bpsiglc.cus.fr', port='34000')
-        
         
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -310,9 +180,10 @@ class GLViewer:
 
     def run(self):
         if self.conn is None:
-            self.conn = get_connection(self.iface)
+            self.conn = get_connection(self.iface)['conn']
             if self.conn is None:
                 return 
+  
         self.cursor = self.conn.cursor()
         tool = PointTool(self.iface.mapCanvas(), self.iface, self.cursor)
         self.iface.mapCanvas().setMapTool(tool)  
