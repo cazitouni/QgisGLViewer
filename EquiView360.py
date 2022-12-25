@@ -21,11 +21,11 @@ class GLWidget(QGLWidget):
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
             
         self.image_width, self.image_height = self.image.size
-        self.yaw = 255
+        self.yaw = 90
         self.pitch = 0
         self.prev_dx = 0
         self.prev_dy = 0
-        self.fov = 90
+        self.fov = 60
         self.moving = False
 
     def initializeGL(self):
