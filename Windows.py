@@ -1,11 +1,10 @@
-from qgis.PyQt.QtWidgets import QDesktopWidget, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog
+from qgis.PyQt.QtWidgets import  QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog
 from qgis.PyQt.QtGui import QIcon
-from qgis.core import Qgis, QgsPointXY
-from qgis.gui import QgsMapTool
+
+
 
 from .EquiView360 import GLWidget
-from .DBHandler import connector
-from .Helpers import MapManager
+
 
 import json
 import os
@@ -116,7 +115,7 @@ class ConnectionDialog(QDialog):
             super().accept()
 
 class MainWindow(QMainWindow):
-    def __init__(self, iface, url, map_manager):
+    def __init__(self, iface, url, map_manager, direction):
         super().__init__()
         self.map_manager = map_manager
         horizontalLayout = QHBoxLayout()
@@ -128,7 +127,7 @@ class MainWindow(QMainWindow):
         horizontalLayout.addWidget(comboBox3)
 
         verticalLayout = QVBoxLayout()
-        self.gl_widget = GLWidget(self, iface, url)
+        self.gl_widget = GLWidget(self, iface, url, direction, map_manager)
         verticalLayout.addWidget(self.gl_widget)
         verticalLayout.addLayout(horizontalLayout)
 
@@ -143,44 +142,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.map_manager.remove_all_points_from_map()
         super().closeEvent(event)
-
-
-class PointTool(QgsMapTool):  
-
-    def __init__(self, canvas, iface, cursor, geom, yaw, link, schema, table):
-        QgsMapTool.__init__(self, canvas)
-        self.iface = iface
-        self.canvas = canvas
-        self.cursor = cursor
-        self.schema = schema
-        self.table = table
-        self.link = link
-        self.geom = geom
-        self.yaw = yaw
-        self.direction = None
-
-    def canvasPressEvent(self, event):
-        x = event.pos().x()
-        y = event.pos().y()
-        point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        url, direction = connector(point.x(), point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw)
-
-        if url != 0 and direction is not None :
-            map_manager = MapManager(self.canvas)
-            map_manager.add_point_to_map(point, float(direction))
-            self.dlg = MainWindow(self.iface, url, map_manager)
-            screen = QDesktopWidget().screenGeometry()
-            size = self.dlg.geometry()
-            x = (screen.width() - size.width()) / 2
-            y = (screen.height() - size.height()) / 2
-            self.dlg.move(x, y)
-            self.dlg.show()
-            self.iface.mapCanvas().unsetMapTool(self)
-
-        else : 
-            self.iface.messageBar().pushMessage("No image for this coordinates", level=Qgis.Info)
     
-
 class ColumnSelectionDialog(QDialog):
     def __init__(self, columns, parent=None):
         super().__init__(parent)

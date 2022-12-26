@@ -8,9 +8,10 @@ from io import BytesIO
 from qgis.core import Qgis
 
 class GLWidget(QGLWidget):
-    def __init__(self, parent, iface, url):
+    def __init__(self, parent, iface, url, direction, map_manager):
         super().__init__(parent)
         self.image = url
+        self.iface = iface
         try : 
             if "http" in self.image :
                 response = requests.get(self.image)
@@ -27,6 +28,8 @@ class GLWidget(QGLWidget):
         self.prev_dy = 0
         self.fov = 60
         self.moving = False
+        self.direction = direction
+        self.map_manager = map_manager
 
     def initializeGL(self):
         glEnable(GL_TEXTURE_2D)
@@ -78,6 +81,8 @@ class GLWidget(QGLWidget):
             self.pitch -= dy
             self.pitch = min(max(self.pitch, -90), 90)
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
+            self.direction -= dx
+            self.map_manager.modify_line_direction(self.direction)
             self.update()
 
     def wheelEvent(self, event):

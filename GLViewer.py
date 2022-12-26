@@ -3,7 +3,7 @@ from qgis.PyQt.QtWidgets import QAction,  QDialog
 
 from qgis.PyQt.QtGui import QIcon
 
-from .Windows import  PointTool
+from .Helpers import  PointTool
 from .Windows import ConnectionDialog, ColumnSelectionDialog
 from .DBHandler import retrieve_columns
 
