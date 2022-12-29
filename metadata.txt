@@ -4,7 +4,7 @@
 
 [general]
 name=Equirectangular Viewer
-qgisMinimumVersion=3.0
+qgisMinimumVersion=3.14
 description=Equirectangular and 360° streetview like image viewer
 version=0.1
 author=Metrotopic

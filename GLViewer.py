@@ -1,7 +1,7 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtWidgets import QAction,  QDialog
-
+from qgis.PyQt.QtWidgets import QMenu, QAction, QDialog, QToolButton
 from qgis.PyQt.QtGui import QIcon
+from qgis.core import Qgis
 
 from .Helpers import  PointTool
 from .Windows import ConnectionDialog, ColumnSelectionDialog
@@ -49,9 +49,16 @@ class GLViewer:
         whats_this=None,
         parent=None):
         icon = QIcon(icon_path)
+        
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
+        reload_icon_path = QIcon(':/plugins/GLViewer/reload.png')
+        menu = QMenu()
+        menuItem= QAction(reload_icon_path, "Reload connection", menu)
+        menuItem.triggered.connect(self.reset_connection)
+        menu.addAction(menuItem)
+        action.setMenu(menu)
 
         if status_tip is not None:
             action.setStatusTip(status_tip)
@@ -69,6 +76,7 @@ class GLViewer:
                 action)
 
         self.actions.append(action)
+        
 
         return action
 
@@ -81,6 +89,8 @@ class GLViewer:
             callback=self.run,
             parent=self.iface.mainWindow())
 
+
+
     def unload(self):
         for action in self.actions:
             self.iface.removePluginMenu(
@@ -92,15 +102,17 @@ class GLViewer:
         if self.params is None:
             self.params = self.get_connection(self.iface)
             if self.params is None:
-                return 
+                return
+        
         cursor = self.params['conn'].cursor()
         schema = self.params['schema']
         table = self.params['table']
         geom = self.params['geom']
         yaw = self.params['yaw']
         link = self.params['link']
+        date  =self.params['date']
 
-        tool = PointTool(self.iface.mapCanvas(), self.iface, cursor, geom, yaw, link, schema, table)
+        tool = PointTool(self.iface.mapCanvas(), self.iface, cursor, geom, yaw, link, schema, table, date)
         self.iface.mapCanvas().setMapTool(tool)
     
     def get_connection(self, iface):
@@ -109,24 +121,19 @@ class GLViewer:
         if result == QDialog.Accepted:
             host, port, database, username, password, schema, table = dialog.get_connection()
             try:
-                conn = psycopg2.connect(
-                    host=host,
-                    port=port,
-                    database=database,
-                    user=username,
-                    password=password
-                )
-            except psycopg2.Error:
+                conn = psycopg2.connect(host=host, port=port, database=database, user=username, password=password)
+                columns = retrieve_columns(schema, table, conn.cursor())
+                second_dialog = ColumnSelectionDialog(columns)
+                result = second_dialog.exec_()
+                if result == QDialog.Accepted:
+                    geom, yaw, link, date = second_dialog.get_columns()
+                    params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "schema":schema, "table":table}
+                    return params
+                else:
+                    pass
+            except Exception:
                 iface.messageBar().pushMessage("Unable to connect to the database", level=Qgis.Info)
-
-            columns = retrieve_columns(schema, table, conn.cursor())
-            second_dialog = ColumnSelectionDialog(columns)
-            result = second_dialog.exec_()
-            if result == QDialog.Accepted:
-                geom, yaw, link, date = second_dialog.get_columns()
-                params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "schema":schema, "table":table}
-                return params
-            else:
-                pass
-
-        return None
+    
+    def reset_connection(self): 
+        self.params = None 
+        self.run()

@@ -1,5 +1,6 @@
-from qgis.PyQt.QtWidgets import  QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog
+from qgis.PyQt.QtWidgets import  QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtCore import Qt
 
 
 
@@ -119,20 +120,26 @@ class ConnectionDialog(QDialog):
             super().accept()
 
 class MainWindow(QMainWindow):
-    def __init__(self, iface, url, map_manager, direction, angle_degrees):
+    def __init__(self, iface, url, map_manager, direction, angle_degrees, date):
         super().__init__()
         self.map_manager = map_manager
         horizontalLayout = QHBoxLayout()
         comboBox1 = QComboBox()
-        comboBox2 = QComboBox()
-        comboBox3 = QComboBox()
+        if date is not None : 
+            comboBox1.addItem(date)
+        date_label = QLabel('Date')
+
+        comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        horizontalLayout.setStretchFactor(date_label, 0)
+        horizontalLayout.addWidget(date_label)
         horizontalLayout.addWidget(comboBox1)
-        horizontalLayout.addWidget(comboBox2)
-        horizontalLayout.addWidget(comboBox3)
 
         verticalLayout = QVBoxLayout()
         self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees)
+        self.gl_widget.setCursor(Qt.OpenHandCursor)
+        self.gl_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         verticalLayout.addWidget(self.gl_widget)
+        verticalLayout.setStretchFactor(self.gl_widget, 1)
         verticalLayout.addLayout(horizontalLayout)
 
         centralWidget = QWidget()
@@ -142,7 +149,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Equirectangular 360° Viewer")
         self.setWindowIcon(QIcon("icon.png"))
         self.resize(1080,720)
-    
+
     def closeEvent(self, event):
         self.map_manager.remove_all_points_from_map()
         super().closeEvent(event)

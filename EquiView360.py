@@ -5,7 +5,6 @@ from PyQt5.QtOpenGL import QGLWidget
 from PIL import Image
 import requests
 from io import BytesIO
-import math
 from qgis.core import Qgis
 
 class GLWidget(QGLWidget):
@@ -24,16 +23,13 @@ class GLWidget(QGLWidget):
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
 
         self.image_width, self.image_height = self.image.size
-        self.yaw = ((direction * math.pi) / 180) + 90 / angle_degrees
-        iface.messageBar().pushMessage(str(angle_degrees), str(direction), level=Qgis.Info)
+        self.yaw = 90 - (direction - ((450 - angle_degrees) % 360))
         self.pitch = 0
         self.prev_dx = 0
         self.prev_dy = 0
         self.fov = 60
         self.moving = False
         self.direction = angle_degrees
-
-        
         self.map_manager = map_manager
 
     def initializeGL(self):
@@ -71,10 +67,12 @@ class GLWidget(QGLWidget):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
+            self.setCursor(QtCore.Qt.ClosedHandCursor)
             self.moving = True
 
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
+            self.setCursor(QtCore.Qt.OpenHandCursor)
             self.moving = False
 
     def mouseMoveEvent(self, event):
