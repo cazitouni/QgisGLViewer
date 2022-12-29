@@ -5,13 +5,15 @@ from PyQt5.QtOpenGL import QGLWidget
 from PIL import Image
 import requests
 from io import BytesIO
+import math
 from qgis.core import Qgis
 
 class GLWidget(QGLWidget):
-    def __init__(self, parent, iface, url, direction, map_manager):
+    def __init__(self, parent, iface, url, direction, map_manager, angle_degrees):
         super().__init__(parent)
         self.image = url
         self.iface = iface
+        
         try : 
             if "http" in self.image :
                 response = requests.get(self.image)
@@ -20,15 +22,18 @@ class GLWidget(QGLWidget):
                 self.image = Image.open(self.image)
         except Exception:
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
-            
+
         self.image_width, self.image_height = self.image.size
-        self.yaw = 90
+        self.yaw = ((direction * math.pi) / 180) + 90 / angle_degrees
+        iface.messageBar().pushMessage(str(angle_degrees), str(direction), level=Qgis.Info)
         self.pitch = 0
         self.prev_dx = 0
         self.prev_dy = 0
         self.fov = 60
         self.moving = False
-        self.direction = direction
+        self.direction = angle_degrees
+
+        
         self.map_manager = map_manager
 
     def initializeGL(self):
@@ -49,12 +54,13 @@ class GLWidget(QGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glPushMatrix()
         glRotatef(self.pitch, 1, 0, 0)
-        glRotatef(self.yaw, 0, 1, 0)
+        glRotatef(self.yaw, 0, 1, 0)  # Rotate the sphere around the y-axis using self.yaw
         glRotatef(90, 1, 0, 0)
         glRotatef(90, 0, 0, 1)
         gluQuadricTexture(self.sphere, True)
         gluSphere(self.sphere, 1, 100, 100)
         glPopMatrix()
+
           
     def resizeGL(self, width, height):
         glViewport(0, 0, width, height)
@@ -81,7 +87,7 @@ class GLWidget(QGLWidget):
             self.pitch -= dy
             self.pitch = min(max(self.pitch, -90), 90)
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
-            self.direction -= dx
+            self.direction += dx
             self.map_manager.modify_line_direction(self.direction)
             self.update()
 

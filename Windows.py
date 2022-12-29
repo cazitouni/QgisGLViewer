@@ -67,6 +67,7 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_username.setText(connection_params["username"])
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
+                self.lineEdit_password.setText(connection_params["passw"])
         except FileNotFoundError:
             pass
 
@@ -87,6 +88,7 @@ class ConnectionDialog(QDialog):
         username = self.lineEdit_username.text()
         schema = self.lineEdit_schema.text()
         table = self.lineEdit_table.text()
+        passw = self.lineEdit_password.text()
         connection_params = {
             "host": host,
             "port": port,
@@ -94,6 +96,7 @@ class ConnectionDialog(QDialog):
             "username": username,
             "schema": schema,
             "table": table,
+            "pass": passw,
         }
         if os.path.exists("connection_params.json"):
             with open("connection_params.json", "r") as f:
@@ -104,6 +107,7 @@ class ConnectionDialog(QDialog):
             connection_params["username"] = username
             connection_params["schema"] = schema
             connection_params["table"] = table
+            connection_params["pass"] = passw
         else : 
             with open("connection_params.json", "w") as f:
                 json.dump(connection_params, f)
@@ -115,7 +119,7 @@ class ConnectionDialog(QDialog):
             super().accept()
 
 class MainWindow(QMainWindow):
-    def __init__(self, iface, url, map_manager, direction):
+    def __init__(self, iface, url, map_manager, direction, angle_degrees):
         super().__init__()
         self.map_manager = map_manager
         horizontalLayout = QHBoxLayout()
@@ -127,7 +131,7 @@ class MainWindow(QMainWindow):
         horizontalLayout.addWidget(comboBox3)
 
         verticalLayout = QVBoxLayout()
-        self.gl_widget = GLWidget(self, iface, url, direction, map_manager)
+        self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees)
         verticalLayout.addWidget(self.gl_widget)
         verticalLayout.addLayout(horizontalLayout)
 

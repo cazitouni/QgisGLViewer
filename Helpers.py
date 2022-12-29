@@ -17,7 +17,7 @@ class MapManager:
         rb_line = QgsRubberBand(self.map_canvas, QgsWkbTypes.LineGeometry)
         rb_line.setColor(QColor(0, 0, 255))
         rb_line.setWidth(8)
-        direction_on_map = 90 - direction
+        direction_on_map = direction
         x1 = point.x()
         y1 = point.y()
         x2 = x1 + 7 * math.cos(math.radians(direction_on_map))
@@ -32,7 +32,7 @@ class MapManager:
         self.map_canvas.refresh()
     
     def modify_line_direction(self, new_direction):
-        new_direction_on_map = 90 - new_direction
+        new_direction_on_map = new_direction
         line = self.rubberbands[0]
         start_point = line.getPoint(0)
         x1 = start_point.x()
@@ -63,16 +63,34 @@ class PointTool(QgsMapTool):
         self.geom = geom
         self.yaw = yaw
         self.direction = None
+        self.rubberband = QgsRubberBand(self.canvas)
+        self.rubberband.setColor(QColor(255, 0, 0))
+        self.rubberband.setWidth(2)
+
         
     def canvasPressEvent(self, event):
         x = event.pos().x()
         y = event.pos().y()
-        point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        url, direction, pointReal = connector(point.x(), point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw)
-        if url != 0 and direction is not None :
+        self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
+        self.url, self.direction, self.pointReal = connector(self.point.x(), self.point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw)
+
+    
+    def canvasReleaseEvent(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
+        release_point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
+
+        # Calculate the angle between the press and release points
+        angle = math.atan2(release_point.y() - self.point.y(), release_point.x() - self.point.x())
+        if release_point.y() < self.point.y():
+            angle += 2 * math.pi
+
+        angle_degrees = (angle * 180 / math.pi) 
+
+        if self.url != 0 and self.direction is not None :
             map_manager = MapManager(self.canvas)
-            map_manager.add_point_to_map(pointReal, float(direction))
-            self.dlg = MainWindow(self.iface, url, map_manager, float(direction))
+            map_manager.add_point_to_map(self.pointReal, angle_degrees)
+            self.dlg = MainWindow(self.iface, self.url, map_manager, float(self.direction), angle_degrees)
             screen = QDesktopWidget().screenGeometry()
             size = self.dlg.geometry()
             x = (screen.width() - size.width()) / 2
