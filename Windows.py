@@ -1,4 +1,4 @@
-from qgis.PyQt.QtWidgets import  QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
+from qgis.PyQt.QtWidgets import  QStackedWidget, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt
 
@@ -13,6 +13,10 @@ import os
 class ConnectionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.combo_box = QComboBox()
+        self.combo_box.addItems(["PostGIS", "Geopackage"])
+        self.stacked_widget = QStackedWidget()
+        self.postgis_widget = QWidget()
         label_host = QLabel("Host:")
         self.lineEdit_host = QLineEdit()
         label_port = QLabel("Port:")
@@ -28,37 +32,49 @@ class ConnectionDialog(QDialog):
         self.lineEdit_schema = QLineEdit()
         label_table = QLabel("Table:")
         self.lineEdit_table = QLineEdit()
-
+        postgis_grid = QGridLayout()
+        postgis_grid.addWidget(label_host, 0, 0)
+        postgis_grid.addWidget(self.lineEdit_host, 0, 1)
+        postgis_grid.addWidget(label_port, 1, 0)
+        postgis_grid.addWidget(self.lineEdit_port, 1, 1)
+        postgis_grid.addWidget(label_database, 2, 0)
+        postgis_grid.addWidget(self.lineEdit_database, 2, 1)
+        postgis_grid.addWidget(label_username, 3, 0)
+        postgis_grid.addWidget(self.lineEdit_username, 3, 1)
+        postgis_grid.addWidget(label_password, 4, 0)
+        postgis_grid.addWidget(self.lineEdit_password, 4, 1)
+        postgis_grid.addWidget(label_schema, 5, 0)
+        postgis_grid.addWidget(self.lineEdit_schema, 5, 1)
+        postgis_grid.addWidget(label_table, 6, 0)
+        postgis_grid.addWidget(self.lineEdit_table, 6, 1)
+        self.postgis_widget.setLayout(postgis_grid)
+        self.geopackage_widget = QWidget()
+        label_file = QLabel("Geopackage file:")
+        self.lineEdit_file = QLineEdit()
+        button_browse = QPushButton("Browse")
+        geopackage_grid = QGridLayout()
+        geopackage_grid.addWidget(label_file, 0, 0)
+        geopackage_grid.addWidget(self.lineEdit_file, 0, 1)
+        geopackage_grid.addWidget(button_browse, 0, 2)
+        self.geopackage_widget.setLayout(geopackage_grid)
+        self.stacked_widget.addWidget(self.postgis_widget)
+        self.stacked_widget.addWidget(self.geopackage_widget)
+        self.combo_box.currentIndexChanged.connect(self.stacked_widget.setCurrentIndex)
         button_connect = QPushButton("Connect")
         button_cancel = QPushButton("Cancel")
-
         button_layout = QHBoxLayout()
         button_layout.addWidget(button_connect)
         button_layout.addWidget(button_cancel)
-
         grid = QGridLayout()
-        grid.addWidget(label_host, 0, 0)
-        grid.addWidget(self.lineEdit_host, 0, 1)
-        grid.addWidget(label_port, 1, 0)
-        grid.addWidget(self.lineEdit_port, 1, 1)
-        grid.addWidget(label_database, 2, 0)
-        grid.addWidget(self.lineEdit_database, 2, 1)
-        grid.addWidget(label_username, 3, 0)
-        grid.addWidget(self.lineEdit_username, 3, 1)
-        grid.addWidget(label_password, 4, 0)
-        grid.addWidget(self.lineEdit_password, 4, 1)
-        grid.addWidget(label_schema, 5, 0)
-        grid.addWidget(self.lineEdit_schema, 5, 1)
-        grid.addWidget(label_table, 6, 0)
-        grid.addWidget(self.lineEdit_table, 6, 1)
-        grid.addLayout(button_layout, 7, 0, 1, 2)
-
+        grid.addWidget(self.combo_box, 0, 0, 1, 2)
+        grid.addWidget(self.stacked_widget, 1, 0, 1, 2)
+        grid.addLayout(button_layout, 2, 0, 1, 2)
         self.setLayout(grid)
         self.setFixedWidth(400)
-
         button_connect.clicked.connect(self.accept)
         button_cancel.clicked.connect(self.reject)
         button_connect.clicked.connect(self.save_connection)
+        button_browse.clicked.connect(self.browse_file)
         try:
             with open("connection_params.json", "r") as f:
                 connection_params = json.load(f)
@@ -69,55 +85,73 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
                 self.lineEdit_password.setText(connection_params["passw"])
-        except FileNotFoundError:
+        except FileNotFoundError :
             pass
-
+        except KeyError:
+            pass
+    
     def get_connection(self):
-        host = self.lineEdit_host.text()
-        port = self.lineEdit_port.text()
-        database = self.lineEdit_database.text()
-        username = self.lineEdit_username.text()
-        password = self.lineEdit_password.text()
-        schema = self.lineEdit_schema.text()
-        table = self.lineEdit_table.text()
-        return host, port, database, username, password, schema, table
+        index = self.stacked_widget.currentIndex()
+        if index == 0:
+            host = self.lineEdit_host.text()
+            port = self.lineEdit_port.text()
+            database = self.lineEdit_database.text()
+            username = self.lineEdit_username.text()
+            password = self.lineEdit_password.text()
+            schema = self.lineEdit_schema.text()
+            table = self.lineEdit_table.text()
+            return host, port, database, username, password, schema, table
+        elif index == 1:
+            file = self.lineEdit_file.text()
+            return file
 
     def save_connection(self):
-        host = self.lineEdit_host.text()
-        port = self.lineEdit_port.text()
-        database = self.lineEdit_database.text()
-        username = self.lineEdit_username.text()
-        schema = self.lineEdit_schema.text()
-        table = self.lineEdit_table.text()
-        passw = self.lineEdit_password.text()
-        connection_params = {
-            "host": host,
-            "port": port,
-            "database": database,
-            "username": username,
-            "schema": schema,
-            "table": table,
-            "pass": passw,
-        }
+        # Get the index of the current widget in the stacked widget
+        index = self.stacked_widget.currentIndex()
+        if index == 0:  # PostGIS connection
+            host = self.lineEdit_host.text()
+            port = self.lineEdit_port.text()
+            database = self.lineEdit_database.text()
+            username = self.lineEdit_username.text()
+            schema = self.lineEdit_schema.text()
+            table = self.lineEdit_table.text()
+            password = self.lineEdit_password.text()
+            connection_params = {
+                "host": host,
+                "port": port,
+                "database": database,
+                "username": username,
+                "schema": schema,
+                "table": table,
+                "passw": password,
+            }
+        elif index == 1:  
+            file = self.lineEdit_file.text()
+            connection_params = {"file": file}
+
+        # Check if the file already exists
         if os.path.exists("connection_params.json"):
+            # Load the existing dictionary from the file
             with open("connection_params.json", "r") as f:
-                connection_params = json.load(f)
-            connection_params["host"] = host
-            connection_params["port"] = port
-            connection_params["database"] = database
-            connection_params["username"] = username
-            connection_params["schema"] = schema
-            connection_params["table"] = table
-            connection_params["pass"] = passw
-        else : 
+                existing_params = json.load(f)
+            # Update the existing dictionary with the new connection params
+            existing_params.update(connection_params)
+            # Save the updated dictionary to the file
+            with open("connection_params.json", "w") as f:
+                json.dump(existing_params, f)
+        else:
+            # Save the connection params to the file
             with open("connection_params.json", "w") as f:
                 json.dump(connection_params, f)
 
-    def accept(self):
-        if not all([self.lineEdit_host.text(), self.lineEdit_port.text(), self.lineEdit_database.text(), self.lineEdit_username.text(), self.lineEdit_password.text(), self.lineEdit_schema.text(), self.lineEdit_table.text()]):
-            pass
-        else:
-            super().accept()
+    def browse_file(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        file, _ = QFileDialog.getOpenFileName(self, "Select Geopackage file", "", "Geopackage (*.gpkg);;All Files (*)", options=options)
+        if file:
+            self.lineEdit_file.setText(file)
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self, iface, url, map_manager, direction, angle_degrees, date):

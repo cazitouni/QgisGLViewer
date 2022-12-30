@@ -1,11 +1,12 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtWidgets import QMenu, QAction, QDialog, QToolButton
 from qgis.PyQt.QtGui import QIcon
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsProject
+import sqlite3
 
 from .Helpers import  PointTool
 from .Windows import ConnectionDialog, ColumnSelectionDialog
-from .DBHandler import retrieve_columns
+from .DBHandler import retrieve_columns, retrieve_columns_gpkg
 
 from .resources import *
 import os
@@ -99,11 +100,12 @@ class GLViewer:
             self.iface.removeToolBarIcon(action)
 
     def run(self):
+        
         if self.params is None:
+            self.isgpkg = False
             self.params = self.get_connection(self.iface)
             if self.params is None:
                 return
-        
         cursor = self.params['conn'].cursor()
         schema = self.params['schema']
         table = self.params['table']
@@ -111,28 +113,49 @@ class GLViewer:
         yaw = self.params['yaw']
         link = self.params['link']
         date  =self.params['date']
+        crs  = self.params['crs']
 
-        tool = PointTool(self.iface.mapCanvas(), self.iface, cursor, geom, yaw, link, schema, table, date)
+        tool = PointTool(self.iface.mapCanvas(), self.iface, cursor, geom, yaw, link, schema, table, date, crs, self.isgpkg)
         self.iface.mapCanvas().setMapTool(tool)
     
     def get_connection(self, iface):
         dialog = ConnectionDialog()
         result = dialog.exec_()
-        if result == QDialog.Accepted:
-            host, port, database, username, password, schema, table = dialog.get_connection()
-            try:
-                conn = psycopg2.connect(host=host, port=port, database=database, user=username, password=password)
-                columns = retrieve_columns(schema, table, conn.cursor())
+        if result == QDialog.Accepted :
+            connection = dialog.get_connection()
+            project_crs = str(QgsProject.instance().crs().authid()[5:])
+            if isinstance(connection, tuple) :
+                host, port, database, username, password, schema, table = connection
+                try:
+                    conn = psycopg2.connect(host=host, port=port, database=database, user=username, password=password)
+                    columns = retrieve_columns(schema, table, conn.cursor())
+                    second_dialog = ColumnSelectionDialog(columns)
+                    result = second_dialog.exec_()
+                    if result == QDialog.Accepted:
+                        geom, yaw, link, date = second_dialog.get_columns()
+                        params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "schema":schema, "table":table, "crs": project_crs}
+                        return params
+                    else:
+                        pass
+                except Exception:
+                    iface.messageBar().pushMessage("Unable to connect to the database", level=Qgis.Info)
+            elif isinstance(connection, str):
+                self.isgpkg = True
+                conn = sqlite3.connect(connection)
+                conn.enable_load_extension(True)
+                cursor = conn.cursor()
+                columns, layer = retrieve_columns_gpkg(cursor)
                 second_dialog = ColumnSelectionDialog(columns)
                 result = second_dialog.exec_()
                 if result == QDialog.Accepted:
                     geom, yaw, link, date = second_dialog.get_columns()
-                    params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "schema":schema, "table":table}
+                    params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "table": layer, "schema": connection, "crs": project_crs}
                     return params
                 else:
                     pass
-            except Exception:
-                iface.messageBar().pushMessage("Unable to connect to the database", level=Qgis.Info)
+
+
+            
     
     def reset_connection(self): 
         self.params = None 

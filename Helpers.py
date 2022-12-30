@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QDesktopWidget
 
 import math
 
-from .DBHandler import connector
+from .DBHandler import connector, connector_gpkg
 from .Windows import MainWindow
 
 class MapManager:
@@ -53,7 +53,7 @@ class MapManager:
 
 class PointTool(QgsMapTool):  
 
-    def __init__(self, canvas, iface, cursor, geom, yaw, link, schema, table, date):
+    def __init__(self, canvas, iface, cursor, geom, yaw, link, schema, table, date, crs, gpkg):
         QgsMapTool.__init__(self, canvas)
         self.iface = iface
         self.canvas = canvas
@@ -65,6 +65,8 @@ class PointTool(QgsMapTool):
         self.geom = geom
         self.yaw = yaw
         self.date = date
+        self.crs = crs
+        self.gpkg = gpkg
         self.direction = None
         self.rubberband = QgsRubberBand(self.canvas)
         self.rubberband.setColor(QColor(0, 0, 255))
@@ -78,8 +80,11 @@ class PointTool(QgsMapTool):
         x = event.pos().x()
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        self.url, self.direction, self.pointReal, self.year = connector(self.point.x(), self.point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw, self.date)
-
+        if self.gpkg is not True : 
+            self.url, self.direction, self.pointReal, self.year = connector(self.point.x(), self.point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw, self.date, self.crs)
+        else : 
+            self.url, self.direction, self.pointReal, self.year = connector_gpkg(self.point.x(), self.point.y(), self.link, self.yaw, self.date, self.crs, self.table, self.schema)
+            
     def canvasReleaseEvent(self, event):
         x = event.pos().x()
         y = event.pos().y()
@@ -90,6 +95,7 @@ class PointTool(QgsMapTool):
         if release_point.y() < self.point.y():
             angle += 2 * math.pi
         angle_degrees = (angle * 180 / math.pi)
+
         if self.url != 0 and self.direction is not None :
             map_manager = MapManager(self.canvas)
             map_manager.add_point_to_map(self.pointReal, angle_degrees)
@@ -104,7 +110,6 @@ class PointTool(QgsMapTool):
         else :
             self.iface.messageBar().pushMessage("No image for this coordinates", level=Qgis.Info)
 
-    
     def canvasMoveEvent(self, event):
         if event.buttons() & Qt.LeftButton:
             x = event.pos().x()
