@@ -23,7 +23,7 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=equirectangular, 360, streetview, viewer, perspective, opengl
 
 homepage=https://metrotopic.net
 category=Plugins
@@ -40,7 +40,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-# category= equirectangular, 360, streetview, viewer, perspective, opengl
+# category= 
 
 # If the plugin can run on QGIS Server.
 server=False
