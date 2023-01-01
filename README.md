@@ -19,10 +19,15 @@ Once the parameters are filled in, simply click on the point position on the map
 
 ## For Linux users
 
-On Linux systems, you may need to install the following packages in order to use the plugin: python3-pyqt5.qtopengl, python3-opengl.
+On Linux systems, you may need to install the others packages in order to use the plugin:
 
 To install them on Ubuntu:
 ```
 sudo apt-get install python3-pyqt5.qtopengl
 sudo apt-get install python3-opengl
+```
+For Fedora : 
+```
+sudo dnf install python-pyopengl
+sudo dnf install mesa-libGLU mesa-libGL
 ```
