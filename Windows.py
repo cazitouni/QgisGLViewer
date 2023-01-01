@@ -71,6 +71,8 @@ class ConnectionDialog(QDialog):
         grid.addLayout(button_layout, 2, 0, 1, 2)
         self.setLayout(grid)
         self.setFixedWidth(400)
+        self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
+        self.setWindowTitle("Connection")
         button_connect.clicked.connect(self.accept)
         button_cancel.clicked.connect(self.reject)
         button_connect.clicked.connect(self.save_connection)
@@ -84,12 +86,12 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_username.setText(connection_params["username"])
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
-                self.lineEdit_password.setText(connection_params["passw"])
+                self.lineEdit_file.setText(connection_params["file"])
         except FileNotFoundError :
             pass
         except KeyError:
             pass
-    
+
     def get_connection(self):
         index = self.stacked_widget.currentIndex()
         if index == 0:
@@ -97,25 +99,22 @@ class ConnectionDialog(QDialog):
             port = self.lineEdit_port.text()
             database = self.lineEdit_database.text()
             username = self.lineEdit_username.text()
-            password = self.lineEdit_password.text()
             schema = self.lineEdit_schema.text()
             table = self.lineEdit_table.text()
-            return host, port, database, username, password, schema, table
+            return host, port, database, username, schema, table
         elif index == 1:
             file = self.lineEdit_file.text()
             return file
 
     def save_connection(self):
-        # Get the index of the current widget in the stacked widget
         index = self.stacked_widget.currentIndex()
-        if index == 0:  # PostGIS connection
+        if index == 0:
             host = self.lineEdit_host.text()
             port = self.lineEdit_port.text()
             database = self.lineEdit_database.text()
             username = self.lineEdit_username.text()
             schema = self.lineEdit_schema.text()
             table = self.lineEdit_table.text()
-            password = self.lineEdit_password.text()
             connection_params = {
                 "host": host,
                 "port": port,
@@ -123,24 +122,17 @@ class ConnectionDialog(QDialog):
                 "username": username,
                 "schema": schema,
                 "table": table,
-                "passw": password,
             }
-        elif index == 1:  
+        elif index == 1:
             file = self.lineEdit_file.text()
             connection_params = {"file": file}
-
-        # Check if the file already exists
         if os.path.exists("connection_params.json"):
-            # Load the existing dictionary from the file
             with open("connection_params.json", "r") as f:
                 existing_params = json.load(f)
-            # Update the existing dictionary with the new connection params
             existing_params.update(connection_params)
-            # Save the updated dictionary to the file
             with open("connection_params.json", "w") as f:
                 json.dump(existing_params, f)
         else:
-            # Save the connection params to the file
             with open("connection_params.json", "w") as f:
                 json.dump(connection_params, f)
 
@@ -151,23 +143,19 @@ class ConnectionDialog(QDialog):
         if file:
             self.lineEdit_file.setText(file)
 
-
-
 class MainWindow(QMainWindow):
     def __init__(self, iface, url, map_manager, direction, angle_degrees, date):
         super().__init__()
         self.map_manager = map_manager
         horizontalLayout = QHBoxLayout()
         comboBox1 = QComboBox()
-        if date is not None : 
+        if date is not None :
             comboBox1.addItem(date)
         date_label = QLabel('Date')
-
         comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         horizontalLayout.setStretchFactor(date_label, 0)
         horizontalLayout.addWidget(date_label)
         horizontalLayout.addWidget(comboBox1)
-
         verticalLayout = QVBoxLayout()
         self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees)
         self.gl_widget.setCursor(Qt.OpenHandCursor)
@@ -175,19 +163,16 @@ class MainWindow(QMainWindow):
         verticalLayout.addWidget(self.gl_widget)
         verticalLayout.setStretchFactor(self.gl_widget, 1)
         verticalLayout.addLayout(horizontalLayout)
-
         centralWidget = QWidget()
         centralWidget.setLayout(verticalLayout)
         self.setCentralWidget(centralWidget)
-
         self.setWindowTitle("Equirectangular 360° Viewer")
-        self.setWindowIcon(QIcon("icon.png"))
+        self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
         self.resize(1080,720)
-
     def closeEvent(self, event):
         self.map_manager.remove_all_points_from_map()
         super().closeEvent(event)
-    
+
 class ColumnSelectionDialog(QDialog):
     def __init__(self, columns, parent=None):
         super().__init__(parent)
@@ -199,14 +184,11 @@ class ColumnSelectionDialog(QDialog):
         self.link_combo = QComboBox()
         self.date_label = QLabel("Date column:")
         self.date_combo = QComboBox()
-
         self.geom_combo.addItems(columns)
         self.yaw_combo.addItems(columns)
         self.link_combo.addItems(columns)
         self.date_combo.addItems(columns)
-        
-
-        try : 
+        try :
             with open("connection_params.json", "r") as f:
                 connection_params = json.load(f)
                 default_geom = connection_params["geom"]
@@ -221,13 +203,11 @@ class ColumnSelectionDialog(QDialog):
                 self.link_combo.setCurrentIndex(default_link_index)
                 default_date_index = self.date_combo.findText(default_date)
                 self.date_combo.setCurrentIndex(default_date_index)
-        except Exception : 
+        except Exception :
             pass
-
         self.ok_button = QPushButton("OK")
         self.ok_button.clicked.connect(self.accept)
         self.ok_button.clicked.connect(self.save_data)
-        
         layout = QVBoxLayout()
         layout.addWidget(self.geom_label)
         layout.addWidget(self.geom_combo)
@@ -238,17 +218,16 @@ class ColumnSelectionDialog(QDialog):
         layout.addWidget(self.date_label)
         layout.addWidget(self.date_combo)
         layout.addWidget(self.ok_button)
-        
         self.setLayout(layout)
         self.setFixedWidth(400)
+        self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
+        self.setWindowTitle("Data selection")
 
     def save_data(self):
         geom = self.geom_combo.currentText()
         yaw = self.yaw_combo.currentText()
         link = self.link_combo.currentText()
         date = self.date_combo.currentText()
-        
-
         connection_params = {
             "geom": geom,
             "yaw": yaw,

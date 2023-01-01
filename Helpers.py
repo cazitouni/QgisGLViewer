@@ -31,7 +31,7 @@ class MapManager:
         rb_point.addPoint(QgsPointXY(point))
         self.rubberbands.extend([rb_line, rb_point])
         self.map_canvas.refresh()
-    
+
     def modify_line_direction(self, new_direction):
         new_direction_on_map = new_direction
         line = self.rubberbands[0]
@@ -51,8 +51,7 @@ class MapManager:
         self.rubberbands.clear()
         self.map_canvas.refresh()
 
-class PointTool(QgsMapTool):  
-
+class PointTool(QgsMapTool):
     def __init__(self, canvas, iface, cursor, geom, yaw, link, schema, table, date, crs, gpkg):
         QgsMapTool.__init__(self, canvas)
         self.iface = iface
@@ -70,21 +69,20 @@ class PointTool(QgsMapTool):
         self.direction = None
         self.rubberband = QgsRubberBand(self.canvas)
         self.rubberband.setColor(QColor(0, 0, 255))
-        self.rubberband.setWidth(8)   
+        self.rubberband.setWidth(8)
         self.point_rubberband = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
         self.point_rubberband.setColor(QColor(255, 0, 0))
         self.point_rubberband.setWidth(10)
-        
 
     def canvasPressEvent(self, event):
         x = event.pos().x()
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        if self.gpkg is not True : 
+        if self.gpkg is not True :
             self.url, self.direction, self.pointReal, self.year = connector(self.point.x(), self.point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw, self.date, self.crs)
-        else : 
+        else :
             self.url, self.direction, self.pointReal, self.year = connector_gpkg(self.point.x(), self.point.y(), self.link, self.yaw, self.date, self.crs, self.table, self.schema)
-            
+
     def canvasReleaseEvent(self, event):
         x = event.pos().x()
         y = event.pos().y()
@@ -95,11 +93,14 @@ class PointTool(QgsMapTool):
         if release_point.y() < self.point.y():
             angle += 2 * math.pi
         angle_degrees = (angle * 180 / math.pi)
-
         if self.url != 0 and self.direction is not None :
             map_manager = MapManager(self.canvas)
             map_manager.add_point_to_map(self.pointReal, angle_degrees)
-            self.dlg = MainWindow(self.iface, self.url, map_manager, float(self.direction), angle_degrees, self.year)
+            try :
+                self.dlg = MainWindow(self.iface, self.url, map_manager, float(self.direction), angle_degrees, self.year)
+            except Exception :
+                map_manager.remove_all_points_from_map()
+                return
             screen = QDesktopWidget().screenGeometry()
             size = self.dlg.geometry()
             x = (screen.width() - size.width()) / 2
@@ -119,4 +120,3 @@ class PointTool(QgsMapTool):
             self.rubberband.addPoint(self.point)
             self.rubberband.addPoint(cursor_point)
             self.point_rubberband.addPoint(self.point)
-

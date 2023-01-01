@@ -12,16 +12,14 @@ class GLWidget(QGLWidget):
         super().__init__(parent)
         self.image = url
         self.iface = iface
-        
-        try : 
+        try :
             if "http" in self.image :
                 response = requests.get(self.image)
                 self.image = Image.open(BytesIO(response.content))
-            else : 
+            else :
                 self.image = Image.open(self.image)
         except Exception:
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
-
         self.image_width, self.image_height = self.image.size
         self.yaw = 90 - (direction - ((450 - angle_degrees) % 360))
         self.pitch = 0
@@ -57,13 +55,12 @@ class GLWidget(QGLWidget):
         gluSphere(self.sphere, 1, 100, 100)
         glPopMatrix()
 
-          
     def resizeGL(self, width, height):
         glViewport(0, 0, width, height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(self.fov, self.width()/self.height(), 0.1, 1000)
-        
+
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
@@ -77,7 +74,7 @@ class GLWidget(QGLWidget):
 
     def mouseMoveEvent(self, event):
         if self.moving:
-            dx = event.pos().x() - self.mouse_x 
+            dx = event.pos().x() - self.mouse_x
             dy = event.pos().y() - self.mouse_y
             dx *= 0.1
             dy *= 0.1
