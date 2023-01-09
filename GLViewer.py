@@ -1,5 +1,5 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtWidgets import QMenu, QAction, QDialog, QToolButton
+from qgis.PyQt.QtWidgets import QMenu, QAction, QDialog
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import Qgis, QgsProject
 import sqlite3

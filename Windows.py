@@ -101,7 +101,8 @@ class ConnectionDialog(QDialog):
             username = self.lineEdit_username.text()
             schema = self.lineEdit_schema.text()
             table = self.lineEdit_table.text()
-            return host, port, database, username, schema, table
+            password = self.lineEdit_password.text()
+            return host, port, database, username, password, schema, table
         elif index == 1:
             file = self.lineEdit_file.text()
             return file
