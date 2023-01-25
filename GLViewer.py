@@ -106,16 +106,7 @@ class GLViewer:
             self.params = self.get_connection(self.iface)
             if self.params is None:
                 return
-        cursor = self.params['conn'].cursor()
-        schema = self.params['schema']
-        table = self.params['table']
-        geom = self.params['geom']
-        yaw = self.params['yaw']
-        link = self.params['link']
-        date  =self.params['date']
-        crs  = self.params['crs']
-
-        tool = PointTool(self.iface.mapCanvas(), self.iface, cursor, geom, yaw, link, schema, table, date, crs, self.isgpkg)
+        tool = PointTool(self.iface.mapCanvas(), self.iface, self.params, self.isgpkg)
         self.iface.mapCanvas().setMapTool(tool)
     
     def get_connection(self, iface):
@@ -154,9 +145,6 @@ class GLViewer:
                 else:
                     pass
 
-
-            
-    
     def reset_connection(self): 
         self.params = None 
         self.run()

@@ -6,12 +6,19 @@ from PIL import Image
 import requests
 from io import BytesIO
 from qgis.core import Qgis
+import math
+from .DBHandler import connector, connector_gpkg
 
 class GLWidget(QGLWidget):
-    def __init__(self, parent, iface, url, direction, map_manager, angle_degrees):
+    def __init__(self, parent, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg):
         super().__init__(parent)
         self.image = url
         self.iface = iface
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.angle_degrees = angle_degrees
+        self.params = params
         try :
             if "http" in self.image :
                 response = requests.get(self.image)
@@ -29,6 +36,7 @@ class GLWidget(QGLWidget):
         self.moving = False
         self.direction = angle_degrees
         self.map_manager = map_manager
+        self.gpkg = gpkg
 
     def initializeGL(self):
         glEnable(GL_TEXTURE_2D)
@@ -48,7 +56,7 @@ class GLWidget(QGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glPushMatrix()
         glRotatef(self.pitch, 1, 0, 0)
-        glRotatef(self.yaw, 0, 1, 0)  # Rotate the sphere around the y-axis using self.yaw
+        glRotatef(self.yaw, 0, 1, 0)
         glRotatef(90, 1, 0, 0)
         glRotatef(90, 0, 0, 1)
         gluQuadricTexture(self.sphere, True)
@@ -65,14 +73,46 @@ class GLWidget(QGLWidget):
         if event.button() == QtCore.Qt.LeftButton:
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
             self.setCursor(QtCore.Qt.ClosedHandCursor)
-            self.moving = True
-
+            
     def mouseReleaseEvent(self, event):
+        if self.moving == False : 
+            try : 
+                x, y = self.recalculate_coordinates(self.x, self.y, self.direction, 10)
+                self.x = x
+                self.y = y
+                if self.gpkg != True : 
+                    self.image, self.dir, self.pointReal, self.year = connector(x, y, self.params)
+                else  :
+                    self.image, self.dir, self.pointReal, self.year = connector_gpkg(x, y, self.params)
+                if self.dir is not None :
+                    self.map_manager.remove_all_points_from_map()
+                    self.map_manager.add_point_to_map(self.pointReal, self.direction)
+                    self.yaw = 90 - (float(self.dir) - ((450 - self.direction) % 360))
+                    if "http" in self.image :
+                        response = requests.get(self.image)
+                        self.image = Image.open(BytesIO(response.content))
+                    else :
+                        self.image = Image.open(self.image)
+                    self.image_width, self.image_height = self.image.size
+                    self.initializeGL()
+                    self.paintGL()
+                    self.resizeGL(self.width(), self.height())
+                    self.update()
+                else : 
+                    x, y = self.recalculate_coordinates(self.x, self.y, self.direction, -10)
+                    self.x = x
+                    self.y = y
+                    self.iface.messageBar().pushMessage("No image found", level=Qgis.Info)
+            except Exception : 
+                self.iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
+
+                
         if event.button() == QtCore.Qt.LeftButton:
             self.setCursor(QtCore.Qt.OpenHandCursor)
             self.moving = False
 
     def mouseMoveEvent(self, event):
+        self.moving = True
         if self.moving:
             dx = event.pos().x() - self.mouse_x
             dy = event.pos().y() - self.mouse_y
@@ -94,3 +134,9 @@ class GLWidget(QGLWidget):
         glLoadIdentity()
         gluPerspective(self.fov, self.width()/self.height(), 0.1, 1000)
         self.update()
+    
+    def recalculate_coordinates(self, x, y, angle, distance):
+        angle_rad = math.radians(angle)
+        x_new = x + (distance * math.cos(angle_rad))
+        y_new = y + (distance * math.sin(angle_rad))
+        return x_new, y_new

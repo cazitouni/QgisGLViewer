@@ -1,6 +1,14 @@
 from qgis.core import QgsPointXY, QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsProject
 
-def connector(x, y, cursor, geom, schema, table, link, yaw, date, crs):
+def connector(x, y, params):
+    cursor = params['conn'].cursor()
+    schema = params['schema']
+    table = params['table']
+    link = params['link']
+    geom = params['geom']
+    yaw = params['yaw']
+    date = params['date']
+    crs = params['crs']
     query = 'SELECT {}, {}, ST_X({}) as x, ST_Y({}) as Y, {}  FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID({}, {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) ORDER BY ST_Distance(ST_SetSRID({}, {}), ST_SetSRID(ST_MakePoint({}, {}), {})) LIMIT 1'.format(link, yaw, geom, geom, date, schema, table, geom, crs, x, y, crs, 10, geom, crs, x, y, crs)
     try : 
         cursor.execute(query)
@@ -14,7 +22,7 @@ def connector(x, y, cursor, geom, schema, table, link, yaw, date, crs):
         direction = None
         pointReal = None
         year = None
-    cursor.close()
+    
     return url, direction, pointReal, year
 
 def retrieve_columns(schema, table, cursor):
@@ -35,7 +43,13 @@ def retrieve_columns_gpkg(cursor):
     cursor.close()
     return columns, layer[0]
 
-def connector_gpkg(x, y, link, yaw, date, crs, table, schema):
+def connector_gpkg(x, y, params):
+    schema = params['schema']
+    table = params['table']
+    link = params['link']
+    yaw = params['yaw']
+    date = params['date']
+    crs = params['crs']
     layer = QgsVectorLayer("{}|layername={}".format(schema, table), "images", "ogr")
     if layer.isValid():
         crs = QgsCoordinateReferenceSystem(crs)
@@ -44,10 +58,12 @@ def connector_gpkg(x, y, link, yaw, date, crs, table, schema):
         point = transform.transform(point)
         point_geometry = QgsGeometry.fromPointXY(point)
         closest_feature = min(layer.getFeatures(), key=lambda f: point_geometry.distance(f.geometry()))
-        url = closest_feature[link]
-        direction = closest_feature[yaw]
-        year = closest_feature[date]    
-    return url, direction, point, year
-
-
-
+        distance = point_geometry.distance(closest_feature.geometry())
+        if distance > 10:
+            return 0, None, None, None
+        else:
+            url = closest_feature[link]
+            direction = closest_feature[yaw]
+            year = closest_feature[date]
+            pointReal = QgsPointXY(closest_feature.geometry().asPoint())
+        return url, direction, pointReal, year

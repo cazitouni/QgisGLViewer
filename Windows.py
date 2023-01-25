@@ -87,6 +87,7 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
                 self.lineEdit_file.setText(connection_params["file"])
+                self.lineEdit_password.setText(connection_params["password"])
         except FileNotFoundError :
             pass
         except KeyError:
@@ -145,7 +146,7 @@ class ConnectionDialog(QDialog):
             self.lineEdit_file.setText(file)
 
 class MainWindow(QMainWindow):
-    def __init__(self, iface, url, map_manager, direction, angle_degrees, date):
+    def __init__(self, iface, url, map_manager, direction, angle_degrees, date, x, y, params, gpkg):
         super().__init__()
         self.map_manager = map_manager
         horizontalLayout = QHBoxLayout()
@@ -158,7 +159,7 @@ class MainWindow(QMainWindow):
         horizontalLayout.addWidget(date_label)
         horizontalLayout.addWidget(comboBox1)
         verticalLayout = QVBoxLayout()
-        self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees)
+        self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg)
         self.gl_widget.setCursor(Qt.OpenHandCursor)
         self.gl_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         verticalLayout.addWidget(self.gl_widget)

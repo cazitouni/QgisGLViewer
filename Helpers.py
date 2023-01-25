@@ -52,19 +52,12 @@ class MapManager:
         self.map_canvas.refresh()
 
 class PointTool(QgsMapTool):
-    def __init__(self, canvas, iface, cursor, geom, yaw, link, schema, table, date, crs, gpkg):
+    def __init__(self, canvas, iface, params, gpkg):
         QgsMapTool.__init__(self, canvas)
         self.iface = iface
         self.canvas = canvas
-        self.cursor = cursor
-        self.schema = schema
+        self.params = params
         self.point = None
-        self.table = table
-        self.link = link
-        self.geom = geom
-        self.yaw = yaw
-        self.date = date
-        self.crs = crs
         self.gpkg = gpkg
         self.direction = None
         self.rubberband = QgsRubberBand(self.canvas)
@@ -79,9 +72,9 @@ class PointTool(QgsMapTool):
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         if self.gpkg is not True :
-            self.url, self.direction, self.pointReal, self.year = connector(self.point.x(), self.point.y(), self.cursor, self.geom, self.schema, self.table, self.link, self.yaw, self.date, self.crs)
+            self.url, self.direction, self.pointReal, self.year = connector(self.point.x(), self.point.y(), self.params)
         else :
-            self.url, self.direction, self.pointReal, self.year = connector_gpkg(self.point.x(), self.point.y(), self.link, self.yaw, self.date, self.crs, self.table, self.schema)
+            self.url, self.direction, self.pointReal, self.year = connector_gpkg(self.point.x(), self.point.y(), self.params)
 
     def canvasReleaseEvent(self, event):
         x = event.pos().x()
@@ -97,7 +90,7 @@ class PointTool(QgsMapTool):
             map_manager = MapManager(self.canvas)
             map_manager.add_point_to_map(self.pointReal, angle_degrees)
             try :
-                self.dlg = MainWindow(self.iface, self.url, map_manager, float(self.direction), angle_degrees, self.year)
+                self.dlg = MainWindow(self.iface, self.url, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg)
             except Exception :
                 map_manager.remove_all_points_from_map()
                 return
