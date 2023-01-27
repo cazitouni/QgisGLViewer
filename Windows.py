@@ -1,6 +1,6 @@
 from qgis.PyQt.QtWidgets import  QStackedWidget, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QDate
 
 
 
@@ -152,6 +152,8 @@ class MainWindow(QMainWindow):
         horizontalLayout = QHBoxLayout()
         comboBox1 = QComboBox()
         if date is not None :
+            if type(date) == QDate:
+                date = date.toString()
             comboBox1.addItem(date)
         date_label = QLabel('Date')
         comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
