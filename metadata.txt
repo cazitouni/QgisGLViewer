@@ -6,7 +6,7 @@
 name=Equirectangular 360° Viewer
 qgisMinimumVersion=3.0
 description=Equirectangular and 360° streetview like image viewer
-version=1.1
+version=1.2
 author=Clément Zitouni
 email=cazitouni@metrotopic.net
 
@@ -21,6 +21,7 @@ repository=https://github.com/cazitouni/QgisGLViewer
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
 changelog= V1.1 : fix a postgis connection issue
+           V1.2 : Fix a date issue with Qdate format, add the possibility to change image by cliking in the glwidget
 
 # Tags are comma separated with spaces allowed
 tags=equirectangular, 360, streetview, viewer, perspective, opengl

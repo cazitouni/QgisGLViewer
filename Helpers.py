@@ -91,7 +91,8 @@ class PointTool(QgsMapTool):
             map_manager.add_point_to_map(self.pointReal, angle_degrees)
             try :
                 self.dlg = MainWindow(self.iface, self.url, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg)
-            except Exception :
+            except Exception as e :
+                self.iface.messageBar().pushMessage(str(e), level=Qgis.Warning)
                 map_manager.remove_all_points_from_map()
                 return
             screen = QDesktopWidget().screenGeometry()

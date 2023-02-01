@@ -12,19 +12,20 @@ from .DBHandler import connector, connector_gpkg
 class GLWidget(QGLWidget):
     def __init__(self, parent, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg):
         super().__init__(parent)
-        self.image = url
+        self.url = url
         self.iface = iface
         self.x = x
         self.y = y
         self.direction = direction
         self.angle_degrees = angle_degrees
         self.params = params
+        self.parent = parent
         try :
-            if "http" in self.image :
-                response = requests.get(self.image)
+            if "http" in self.url :
+                response = requests.get(self.url)
                 self.image = Image.open(BytesIO(response.content))
             else :
-                self.image = Image.open(self.image)
+                self.image = Image.open(self.url)
         except Exception:
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
         self.image_width, self.image_height = self.image.size
@@ -75,38 +76,41 @@ class GLWidget(QGLWidget):
             self.setCursor(QtCore.Qt.ClosedHandCursor)
             
     def mouseReleaseEvent(self, event):
-        if self.moving == False : 
-            try : 
-                x, y = self.recalculate_coordinates(self.x, self.y, self.direction, 10)
+        
+        if self.moving == False :
+            self.setCursor(QtCore.Qt.WaitCursor)
+            try :
+                x, y = self.recalculate_coordinates(self.x, self.y, self.direction, self.parent.gap_spinbox.value())
                 self.x = x
                 self.y = y
                 if self.gpkg != True : 
-                    self.image, self.dir, self.pointReal, self.year = connector(x, y, self.params)
+                    self.img, self.dir, self.pointReal, self.year = connector(x, y, self.params)
                 else  :
-                    self.image, self.dir, self.pointReal, self.year = connector_gpkg(x, y, self.params)
-                if self.dir is not None :
+                    self.img, self.dir, self.pointReal, self.year = connector_gpkg(x, y, self.params)
+                if self.img != self.url  :
+                    self.url  = self.img
                     self.map_manager.remove_all_points_from_map()
                     self.map_manager.add_point_to_map(self.pointReal, self.direction)
                     self.yaw = 90 - (float(self.dir) - ((450 - self.direction) % 360))
-                    if "http" in self.image :
-                        response = requests.get(self.image)
+                    if "http" in self.url :
+                        response = requests.get(self.url)
                         self.image = Image.open(BytesIO(response.content))
                     else :
-                        self.image = Image.open(self.image)
+                        self.image = Image.open(self.url)
                     self.image_width, self.image_height = self.image.size
                     self.initializeGL()
                     self.paintGL()
                     self.resizeGL(self.width(), self.height())
                     self.update()
-                else : 
-                    x, y = self.recalculate_coordinates(self.x, self.y, self.direction, -10)
+                else :
+                    x, y = self.recalculate_coordinates(self.x, self.y, self.direction, -self.parent.gap_spinbox.value())
                     self.x = x
                     self.y = y
                     self.iface.messageBar().pushMessage("No image found", level=Qgis.Info)
-            except Exception : 
-                self.iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
-
-                
+            except Exception as e : 
+                self.iface.messageBar().pushMessage(str(e), level=Qgis.Warning)
+            finally : 
+                self.setCursor(QtCore.Qt.OpenHandCursor)  
         if event.button() == QtCore.Qt.LeftButton:
             self.setCursor(QtCore.Qt.OpenHandCursor)
             self.moving = False

@@ -1,11 +1,7 @@
-from qgis.PyQt.QtWidgets import  QStackedWidget, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
+from qgis.PyQt.QtWidgets import  QAbstractSpinBox, QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt, QDate
-
-
-
 from .EquiView360 import GLWidget
-
 
 import json
 import os
@@ -87,7 +83,6 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
                 self.lineEdit_file.setText(connection_params["file"])
-                self.lineEdit_password.setText(connection_params["password"])
         except FileNotFoundError :
             pass
         except KeyError:
@@ -160,6 +155,16 @@ class MainWindow(QMainWindow):
         horizontalLayout.setStretchFactor(date_label, 0)
         horizontalLayout.addWidget(date_label)
         horizontalLayout.addWidget(comboBox1)
+        gap_label = QLabel('Gap')
+        self.gap_spinbox = QSpinBox()
+        self.gap_spinbox.setMinimum(1)
+        self.gap_spinbox.setMaximum(50)
+        self.gap_spinbox.setValue(5)
+        horizontalLayout.setStretchFactor(gap_label, 0)
+        horizontalLayout.addWidget(gap_label)
+        horizontalLayout.addWidget(self.gap_spinbox)
+        self.gap_spinbox.setFocusPolicy(Qt.NoFocus)
+        self.gap_spinbox.setStyleSheet("QSpinBox {background: transparent; selection-background-color: transparent; selection-color: black; color: black;}")
         verticalLayout = QVBoxLayout()
         self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg)
         self.gl_widget.setCursor(Qt.OpenHandCursor)
