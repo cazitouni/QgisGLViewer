@@ -1,4 +1,4 @@
-# QgisGLViewer
+# Equirectangular 360° Viewer
 
 A simple streetview-like Qgis plugin for equirectangular image visualization.
 
