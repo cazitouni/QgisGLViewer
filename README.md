@@ -34,6 +34,7 @@ The comparative view offer the possibility for the user to cross a position betw
 To launch the second view, the user can press the Comparative view button then navigate to the desired images in both of the view. 
 The user can set the line length with the gap parameter. 
 Once both line crossed each other, it's possible to make an intersection point appears by clicking on the Cross position button.
+A second click on the comparative view button will close the second view.
 
 It's possible to remove all point on the canvas in the plugin's icon menu under the reload connection parameter.
 
