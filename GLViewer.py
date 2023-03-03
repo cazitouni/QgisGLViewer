@@ -4,34 +4,31 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.core import Qgis, QgsProject
 import sqlite3
 
-from .Helpers import  PointTool
+from .Handler import  PointTool
+from .Helpers import MapManager
 from .Windows import ConnectionDialog, ColumnSelectionDialog
 from .DBHandler import retrieve_columns, retrieve_columns_gpkg
 
 from .resources import *
 import os
 import psycopg2
-  
+
 class GLViewer:
 
     def __init__(self, iface):
-
         self.iface = iface
         self.canvas = iface.mapCanvas()
         self.params = None
-        
         self.plugin_dir = os.path.dirname(__file__)
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
             'GLViewer_{}.qm'.format(locale))
-
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
-
         self.actions = []
         self.menu = self.tr(u'&Equirectangular Viewer')
 
@@ -50,47 +47,39 @@ class GLViewer:
         whats_this=None,
         parent=None):
         icon = QIcon(icon_path)
-        
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
         reload_icon_path = QIcon(':/plugins/GLViewer/reload.png')
+        remove_icon_path = QIcon(':/plugins/GLViewer/remove.png')
         menu = QMenu()
         menuItem= QAction(reload_icon_path, "Reload connection", menu)
         menuItem.triggered.connect(self.reset_connection)
         menu.addAction(menuItem)
+        menuItem2= QAction(remove_icon_path, "Clean crossing points", menu)
+        menuItem2.triggered.connect(self.remove_all_crosspoints_from_all_maps)
+        menu.addAction(menuItem2)
         action.setMenu(menu)
-
         if status_tip is not None:
             action.setStatusTip(status_tip)
-
         if whats_this is not None:
             action.setWhatsThis(whats_this)
-
         if add_to_toolbar:
-            # Adds plugin icon to Plugins toolbar
             self.iface.addToolBarIcon(action)
-
         if add_to_menu:
             self.iface.addPluginToMenu(
                 self.menu,
                 action)
-
         self.actions.append(action)
-        
-
         return action
 
     def initGui(self):
-
         icon_path = ':/plugins/GLViewer/icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'360° view'),
             callback=self.run,
             parent=self.iface.mainWindow())
-
-
 
     def unload(self):
         for action in self.actions:
@@ -99,8 +88,11 @@ class GLViewer:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    def remove_all_crosspoints_from_all_maps(self):
+        for manager in MapManager.instances:
+            manager.remove_all_crosspoints_from_map()
+
     def run(self):
-        
         if self.params is None:
             self.isgpkg = False
             self.params = self.get_connection(self.iface)
@@ -108,7 +100,7 @@ class GLViewer:
                 return
         tool = PointTool(self.iface.mapCanvas(), self.iface, self.params, self.isgpkg)
         self.iface.mapCanvas().setMapTool(tool)
-    
+
     def get_connection(self, iface):
         dialog = ConnectionDialog()
         result = dialog.exec_()

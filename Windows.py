@@ -1,4 +1,4 @@
-from qgis.PyQt.QtWidgets import  QAbstractSpinBox, QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
+from qgis.PyQt.QtWidgets import  QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt, QDate
 from .EquiView360 import GLWidget
@@ -141,10 +141,21 @@ class ConnectionDialog(QDialog):
             self.lineEdit_file.setText(file)
 
 class MainWindow(QMainWindow):
-    def __init__(self, iface, url, map_manager, direction, angle_degrees, date, x, y, params, gpkg):
+    def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, date, x, y, params, gpkg):
         super().__init__()
+        self.iface = iface
+        self.url = url
+        self.pointReal = pointReal
         self.map_manager = map_manager
+        self.direction = direction
+        self.angle_degrees = angle_degrees
+        self.x = x 
+        self.y = y 
+        self.params = params 
+        self.gpkg  =gpkg
+        self.gl_widget2 = None
         horizontalLayout = QHBoxLayout()
+        self.horizontalLayout2 = QHBoxLayout()
         comboBox1 = QComboBox()
         if date is not None :
             if type(date) == QDate:
@@ -155,32 +166,70 @@ class MainWindow(QMainWindow):
         horizontalLayout.setStretchFactor(date_label, 0)
         horizontalLayout.addWidget(date_label)
         horizontalLayout.addWidget(comboBox1)
+        self.setFocus()
         gap_label = QLabel('Gap')
         self.gap_spinbox = QSpinBox()
         self.gap_spinbox.setMinimum(1)
         self.gap_spinbox.setMaximum(50)
         self.gap_spinbox.setValue(5)
+        self.gap_spinbox.valueChanged.connect(lambda value: map_manager.modify_line_length(value))
+        self.show_button = QPushButton('Comparative view')
+        self.show_button.clicked.connect(self.show_second_view)
+        self.cross_button = QPushButton('Cross position')
+        self.cross_button.clicked.connect(map_manager.check_for_crossing_lines)
         horizontalLayout.setStretchFactor(gap_label, 0)
+        horizontalLayout.addWidget(self.show_button)
+        horizontalLayout.addWidget(self.cross_button)
         horizontalLayout.addWidget(gap_label)
         horizontalLayout.addWidget(self.gap_spinbox)
         self.gap_spinbox.setFocusPolicy(Qt.NoFocus)
         self.gap_spinbox.setStyleSheet("QSpinBox {background: transparent; selection-background-color: transparent; selection-color: black; color: black;}")
-        verticalLayout = QVBoxLayout()
-        self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg)
+        self.verticalLayout = QVBoxLayout()
+        self.map_manager.add_point_to_map(self.pointReal, self.angle_degrees, 1)
+        self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg, 1)
         self.gl_widget.setCursor(Qt.OpenHandCursor)
         self.gl_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        verticalLayout.addWidget(self.gl_widget)
-        verticalLayout.setStretchFactor(self.gl_widget, 1)
-        verticalLayout.addLayout(horizontalLayout)
+        self.horizontalLayout2.addWidget(self.gl_widget)
+        self.horizontalLayout2.setStretchFactor(self.gl_widget, 1)
+        self.verticalLayout.addLayout(self.horizontalLayout2)
+        self.verticalLayout.addLayout(horizontalLayout)
         centralWidget = QWidget()
-        centralWidget.setLayout(verticalLayout)
+        centralWidget.setLayout(self.verticalLayout)
         self.setCentralWidget(centralWidget)
         self.setWindowTitle("Equirectangular 360° Viewer")
         self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
         self.resize(1080,720)
+
     def closeEvent(self, event):
         self.map_manager.remove_all_points_from_map()
         super().closeEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_C:
+            self.gl_widget.show_crosshair = not self.gl_widget.show_crosshair
+            self.gl_widget.update()
+            if self.gl_widget2 is not None :
+                self.gl_widget2.show_crosshair = not self.gl_widget2.show_crosshair
+                self.gl_widget2.update()
+
+    def show_second_view(self):
+        self.setCursor(Qt.WaitCursor)
+        if self.gl_widget2 is None :
+            self.gl_widget2 = GLWidget(self, self.iface, self.url, self.direction, self.map_manager, self.angle_degrees, self.x, self.y, self.params, self.gpkg, 2)
+            self.horizontalLayout2.addWidget(self.gl_widget)
+            self.horizontalLayout2.setStretchFactor(self.gl_widget, 1)
+            self.horizontalLayout2.addWidget(self.gl_widget2)
+            self.horizontalLayout2.setStretchFactor(self.gl_widget2, 1)
+            self.verticalLayout.addLayout(self.horizontalLayout2)
+            self.gl_widget2.show()
+            self.gl_widget2.setCursor(Qt.OpenHandCursor)
+            self.map_manager.add_point_to_map(self.pointReal, self.angle_degrees, 2)
+        else  :
+            if self.gl_widget2.isVisible():
+                self.gl_widget2.hide()
+                self.gl_widget2 = None
+                self.map_manager.remove_second_instance_points()
+        self.unsetCursor()
 
 class ColumnSelectionDialog(QDialog):
     def __init__(self, columns, parent=None):
