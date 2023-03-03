@@ -8,6 +8,8 @@ This plugin takes point data from a geopackage and/or a PostGIS database and loa
 
 ## Plugin usage
 
+### Global usage 
+
 To use this plugin, simply fill in your database connection and/or geopackage and define the related columns:
 
 - **Geometry column**: the geometry column of the point table
@@ -16,6 +18,24 @@ To use this plugin, simply fill in your database connection and/or geopackage an
 - **Date column**: date the image was taken
 
 Once the parameters are filled in, simply click on the point position on the map and the image will load, no need to load the point layer in your project.
+
+The plugin also offer the ability to jump to different images, you only have to click on the image in the direction you want.
+The gap parameter could be set to change the jump distance (in meters), by default it's set to 5.
+
+In addition it's possible for the user to press the **C** key to make a crosshair appear on the image. 
+
+### Comparative view 
+
+![image](https://user-images.githubusercontent.com/92778930/222739732-52a6e90b-1ce5-429c-8ef5-767e10f0f55c.png)
+
+
+The comparative view offer the possibility for the user to cross a position between two image in order to get the intersection point between the two.
+
+To launch the second view, the user can press the Comparative view button then navigate to the desired images in both of the view. 
+The user can set the line length with the gap parameter. 
+Once both line crossed each other, it's possible to make an intersection point appears by clicking on the Cross position button.
+
+It's possible to remove all point on the canvas in the plugin's icon menu under the reload connection parameter.
 
 ## For Linux users
 
