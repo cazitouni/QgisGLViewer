@@ -1,8 +1,9 @@
-from qgis.core import QgsPointXY, QgsWkbTypes
+from qgis.core import QgsPointXY, QgsWkbTypes, QgsFeature
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtGui import QColor
 
 import math
+import uuid
 
 class MapManager:
     instances = []
@@ -186,3 +187,13 @@ class MapManager:
                 return True
             else:
                 return False
+
+    def export_crosspoints_to_vlayer(self, layer):
+        layerProvider = layer.dataProvider()
+        for i, point in enumerate(self.crosspoints):
+            feature = QgsFeature()
+            geometry = point.asGeometry()
+            feature.setGeometry(geometry)
+            feature.setAttributes([str(uuid.uuid4()), point.x(), point.y()])
+            layerProvider.addFeature(feature)
+        layer.updateExtents()

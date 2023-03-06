@@ -141,8 +141,10 @@ class ConnectionDialog(QDialog):
             self.lineEdit_file.setText(file)
 
 class MainWindow(QMainWindow):
+    instances = []
     def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, date, x, y, params, gpkg):
         super().__init__()
+        MainWindow.instances.append(self)
         self.iface = iface
         self.url = url
         self.pointReal = pointReal

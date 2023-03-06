@@ -1,10 +1,11 @@
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtWidgets import QMenu, QAction, QDialog
 from qgis.PyQt.QtGui import QIcon
-from qgis.core import Qgis, QgsProject
+from qgis.core import Qgis, QgsProject, QgsField, QgsFields, QgsVectorLayer
 import sqlite3
 
 from .Handler import  PointTool
+from .Windows import MainWindow
 from .Helpers import MapManager
 from .Windows import ConnectionDialog, ColumnSelectionDialog
 from .DBHandler import retrieve_columns, retrieve_columns_gpkg
@@ -51,14 +52,18 @@ class GLViewer:
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
         reload_icon_path = QIcon(':/plugins/GLViewer/reload.png')
+        export_icon_path = QIcon(':/plugins/GLViewer/export.png')
         remove_icon_path = QIcon(':/plugins/GLViewer/remove.png')
         menu = QMenu()
         menuItem= QAction(reload_icon_path, "Reload connection", menu)
         menuItem.triggered.connect(self.reset_connection)
         menu.addAction(menuItem)
-        menuItem2= QAction(remove_icon_path, "Clean crossing points", menu)
-        menuItem2.triggered.connect(self.remove_all_crosspoints_from_all_maps)
+        menuItem2= QAction(export_icon_path, "Export points", menu)
+        menuItem2.triggered.connect(self.export_crosspoints_to_vlayer)
         menu.addAction(menuItem2)
+        menuItem3= QAction(remove_icon_path, "Clear points", menu)
+        menuItem3.triggered.connect(self.remove_all_crosspoints_from_all_maps)
+        menu.addAction(menuItem3)
         action.setMenu(menu)
         if status_tip is not None:
             action.setStatusTip(status_tip)
@@ -92,7 +97,26 @@ class GLViewer:
         for manager in MapManager.instances:
             manager.remove_all_crosspoints_from_map()
 
+    def export_crosspoints_to_vlayer(self):
+        if not any(manager.crosspoints for manager in MapManager.instances) :
+            return
+        project_crs = QgsProject.instance().crs().authid()
+        layer = QgsVectorLayer("Point?crs={}".format(project_crs), "Crosspoints", "memory")
+        layerProvider = layer.dataProvider()
+        fields = QgsFields()
+        fields.append(QgsField("UUID", QVariant.String))
+        fields.append(QgsField("X", QVariant.Double))
+        fields.append(QgsField("Y", QVariant.Double))
+        fields.append(QgsField("Note", QVariant.String))
+        layerProvider.addAttributes(fields)
+        layer.updateFields()
+        for manager in MapManager.instances:
+            manager.export_crosspoints_to_vlayer(layer)
+        QgsProject.instance().addMapLayer(layer)
+
     def run(self):
+        for window in MainWindow.instances:
+            window.close()
         if self.params is None:
             self.isgpkg = False
             self.params = self.get_connection(self.iface)

@@ -3,5 +3,6 @@
         <file>icon.png</file>
         <file>reload.png</file>
         <file>remove.png</file>
+        <file>export.png</file>
     </qresource>
 </RCC>
