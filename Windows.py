@@ -1,6 +1,6 @@
 from qgis.PyQt.QtWidgets import  QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import Qt, QDate
+from qgis.PyQt.QtCore import Qt, QDate, QDateTime
 from .EquiView360 import GLWidget
 
 import json
@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         self.horizontalLayout2 = QHBoxLayout()
         comboBox1 = QComboBox()
         if date is not None :
-            if type(date) == QDate:
+            if type(date) == QDate or type(date) == QDateTime :
                 date = date.toString()
             comboBox1.addItem(date)
         date_label = QLabel('Date')
@@ -226,7 +226,7 @@ class MainWindow(QMainWindow):
     def show_second_view(self):
         self.setCursor(Qt.WaitCursor)
         if self.gl_widget2 is None :
-            self.gl_widget2 = GLWidget(self, self.gl_widget.iface, self.gl_widget.url, self.gl_widget.direction, self.gl_widget.map_manager, self.gl_widget.angle_degrees, self.gl_widget.x, self.gl_widget.y, self.gl_widget.params, self.gl_widget.gpkg, 2)
+            self.gl_widget2 = GLWidget(self, self.iface, self.url, self.direction, self.map_manager, self.angle_degrees, self.x, self.y, self.params, self.gpkg, 2)
             self.horizontalLayout2.addWidget(self.gl_widget)
             self.horizontalLayout2.setStretchFactor(self.gl_widget, 1)
             self.horizontalLayout2.addWidget(self.gl_widget2)
