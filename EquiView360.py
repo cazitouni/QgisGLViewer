@@ -100,7 +100,7 @@ class GLWidget(QGLWidget):
         if event.button() == QtCore.Qt.LeftButton:
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
             self.setCursor(QtCore.Qt.ClosedHandCursor)
-            
+
     def mouseReleaseEvent(self, event):
         if self.moving == False :
             self.setCursor(QtCore.Qt.WaitCursor)
