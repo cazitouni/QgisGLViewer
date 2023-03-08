@@ -17,7 +17,7 @@ To use this plugin, simply fill in your database connection and/or geopackage an
 - **Link column**: link to the image, could be a directory or a web URL
 - **Date column**: date the image was taken
 
-Once the parameters are filled in, simply click on the point position on the map and the image will load, no need to load the point layer in your project.
+Once the parameters are filled in, simply click on the point position on the map and drag the cursor to the direction you want, and the image will load, no need to load the point layer in your project.
 
 The plugin also offer the ability to jump to different images, you only have to click on the image in the direction you want.
 The gap parameter could be set to change the jump distance (in meters), by default it's set to 5.
@@ -36,7 +36,9 @@ The user can set the line length with the gap parameter.
 Once both line crossed each other, it's possible to make an intersection point appears by clicking on the Cross position button.
 A second click on the comparative view button will close the second view.
 
-It's possible to remove all point on the canvas in the plugin's icon menu under the reload connection parameter.
+Once finished the user can export all the points generated to a virtual layer by usjng the related menu option.
+
+It's also possible to remove all point on the canvas in the plugin's icon menu under the reload connection parameter.
 
 ## For Linux users
 
