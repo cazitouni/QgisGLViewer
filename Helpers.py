@@ -1,4 +1,4 @@
-from qgis.core import QgsPointXY, QgsWkbTypes, QgsFeature
+from qgis.core import QgsPointXY, QgsWkbTypes, QgsFeature,QgsCoordinateReferenceSystem, QgsProject, QgsCoordinateTransform, QgsUnitTypes
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtGui import QColor
 
@@ -19,6 +19,12 @@ class MapManager:
         self.init2 = 0
 
     def add_point_to_map(self, point, direction, instance):
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            src_crs = QgsCoordinateReferenceSystem('EPSG:4326')
+            dst_crs = QgsCoordinateReferenceSystem('EPSG:3857')
+            transform = QgsCoordinateTransform(src_crs, dst_crs, QgsProject.instance())
+            untransform = QgsCoordinateTransform(dst_crs, src_crs, QgsProject.instance())
+            point = transform.transform(point)
         rb_line = QgsRubberBand(self.map_canvas, QgsWkbTypes.LineGeometry)
         if instance == 2 :
             rb_line.setColor(QColor(255, 165, 0))
@@ -37,8 +43,13 @@ class MapManager:
             dy = self.distance * math.sin(math.radians(self.direction_on_map))
         x2 = x1 + dx
         y2 = y1 + dy
-        rb_line.addPoint(QgsPointXY(x1, y1))
-        rb_line.addPoint(QgsPointXY(x2, y2))
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            rb_line.addPoint(untransform.transform((QgsPointXY(x1, y1))))
+            rb_line.addPoint(untransform.transform((QgsPointXY(x2, y2))))
+            point = untransform.transform(point)
+        else : 
+            rb_line.addPoint((QgsPointXY(x1, y1)))
+            rb_line.addPoint((QgsPointXY(x2, y2)))
         rb_point = QgsRubberBand(self.map_canvas, QgsWkbTypes.PointGeometry)
         rb_point.setColor(QColor(255, 0, 0))
         rb_point.setWidth(10)
@@ -63,6 +74,12 @@ class MapManager:
             line = self.rubberbands[2]
             self.new_direction_on_map2 = new_direction
         start_point = line.getPoint(0)
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            src_crs = QgsCoordinateReferenceSystem('EPSG:4326')
+            dst_crs = QgsCoordinateReferenceSystem('EPSG:3857')
+            transform = QgsCoordinateTransform(src_crs, dst_crs, QgsProject.instance())
+            untransform = QgsCoordinateTransform(dst_crs, src_crs, QgsProject.instance())
+            start_point = transform.transform(start_point)
         x1 = start_point.x()
         y1 = start_point.y()
         if instance == 1 :
@@ -80,14 +97,24 @@ class MapManager:
                 x2 = x1 + self.distance * math.cos(math.radians(self.new_direction_on_map2))
                 y2 = y1 + self.distance * math.sin(math.radians(self.new_direction_on_map2))
         line.reset(QgsWkbTypes.LineGeometry)
-        line.addPoint(QgsPointXY(x1, y1))
-        line.addPoint(QgsPointXY(x2, y2))
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            line.addPoint(untransform.transform((QgsPointXY(x1, y1))))
+            line.addPoint(untransform.transform((QgsPointXY(x2, y2))))
+        else :
+            line.addPoint((QgsPointXY(x1, y1)))
+            line.addPoint((QgsPointXY(x2, y2)))
         self.map_canvas.refresh()
 
     def modify_line_length(self, new_length):
         self.new_length = new_length
         line = self.rubberbands[0]
         start_point = line.getPoint(0)
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            src_crs = QgsCoordinateReferenceSystem('EPSG:4326')
+            dst_crs = QgsCoordinateReferenceSystem('EPSG:3857')
+            transform = QgsCoordinateTransform(src_crs, dst_crs, QgsProject.instance())
+            untransform = QgsCoordinateTransform(dst_crs, src_crs, QgsProject.instance())
+            start_point = transform.transform(start_point)
         x1 = start_point.x()
         y1 = start_point.y()
         if self.new_direction_on_map is not None : 
@@ -100,8 +127,12 @@ class MapManager:
             x2 = x1 + new_length * math.cos(math.radians(self.direction_on_map))
             y2 = y1 + new_length * math.sin(math.radians(self.direction_on_map))
         line.reset(QgsWkbTypes.LineGeometry)
-        line.addPoint(QgsPointXY(x1, y1))
-        line.addPoint(QgsPointXY(x2, y2))
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            line.addPoint(untransform.transform((QgsPointXY(x1, y1))))
+            line.addPoint(untransform.transform((QgsPointXY(x2, y2))))
+        else :
+            line.addPoint((QgsPointXY(x1, y1)))
+            line.addPoint((QgsPointXY(x2, y2)))
         self.map_canvas.refresh()
 
         if len(self.rubberbands) == 4 : 

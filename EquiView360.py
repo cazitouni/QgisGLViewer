@@ -4,7 +4,7 @@ from PyQt5 import  QtCore
 from PyQt5.QtOpenGL import QGLWidget
 from PIL import Image
 from io import BytesIO
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsProject, QgsUnitTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
 import math
 import requests
 
@@ -170,6 +170,19 @@ class GLWidget(QGLWidget):
 
     def recalculate_coordinates(self, x, y, angle, distance):
         angle_rad = math.radians(angle)
-        x_new = x + (distance * math.cos(angle_rad))
-        y_new = y + (distance * math.sin(angle_rad))
+        point = QgsPointXY(x, y)
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            src_crs = QgsCoordinateReferenceSystem('EPSG:4326')
+            dst_crs = QgsCoordinateReferenceSystem('EPSG:3857')
+            transform = QgsCoordinateTransform(src_crs, dst_crs, QgsProject.instance())
+            untransform = QgsCoordinateTransform(dst_crs, src_crs, QgsProject.instance())
+            point = transform.transform(point)
+
+        x_new = point.x() + (distance * math.cos(angle_rad))
+        y_new = point.y() + (distance * math.sin(angle_rad))
+        if QgsProject.instance().crs().mapUnits() == QgsUnitTypes.DistanceDegrees:
+            point = QgsPointXY(x_new, y_new)
+            point = untransform.transform(point)
+            x_new = point.x()
+            y_new = point.y()
         return x_new, y_new
