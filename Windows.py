@@ -2,6 +2,7 @@ from qgis.PyQt.QtWidgets import  QStackedWidget, QSpinBox, QFileDialog, QMainWin
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt, QDate, QDateTime
 from .EquiView360 import GLWidget
+import datetime
 
 import json
 import os
@@ -162,6 +163,8 @@ class MainWindow(QMainWindow):
         if date is not None :
             if type(date) == QDate or type(date) == QDateTime :
                 date = date.toString()
+            elif isinstance(date, datetime.datetime):
+                date = date.strftime('%Y-%m-%d %H:%M:%S')
             comboBox1.addItem(date)
         date_label = QLabel('Date')
         comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -192,7 +195,6 @@ class MainWindow(QMainWindow):
         horizontalLayout.addWidget(gap_label)
         horizontalLayout.addWidget(self.gap_spinbox)
         self.gap_spinbox.setFocusPolicy(Qt.NoFocus)
-        self.gap_spinbox.setStyleSheet("QSpinBox {background: transparent; selection-background-color: transparent; selection-color: black; color: black;}")
         self.verticalLayout = QVBoxLayout()
         self.map_manager.add_point_to_map(self.pointReal, self.angle_degrees, 1)
         self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg, 1)
