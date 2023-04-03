@@ -1,6 +1,7 @@
 from qgis.PyQt.QtWidgets import  QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt, QDate, QDateTime
+from qgis.core import QgsApplication
 from .EquiView360 import GLWidget
 import datetime
 
@@ -75,7 +76,8 @@ class ConnectionDialog(QDialog):
         button_connect.clicked.connect(self.save_connection)
         button_browse.clicked.connect(self.browse_file)
         try:
-            with open("connection_params.json", "r") as f:
+            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+            with open(filename, "r") as f:
                 connection_params = json.load(f)
                 self.lineEdit_host.setText(connection_params["host"])
                 self.lineEdit_port.setText(connection_params["port"])
@@ -124,14 +126,15 @@ class ConnectionDialog(QDialog):
         elif index == 1:
             file = self.lineEdit_file.text()
             connection_params = {"file": file}
-        if os.path.exists("connection_params.json"):
-            with open("connection_params.json", "r") as f:
+        filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
                 existing_params = json.load(f)
             existing_params.update(connection_params)
-            with open("connection_params.json", "w") as f:
+            with open(filename, "w") as f:
                 json.dump(existing_params, f)
         else:
-            with open("connection_params.json", "w") as f:
+            with open(filename, "w") as f:
                 json.dump(connection_params, f)
 
     def browse_file(self):
@@ -177,7 +180,8 @@ class MainWindow(QMainWindow):
         self.gap_spinbox.setMinimum(1)
         self.gap_spinbox.setMaximum(50)
         try :
-            with open("connection_params.json", "r") as f:
+            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+            with open(filename, "r") as f:
                 connection_params = json.load(f)
                 default_gap = connection_params["gap"]
                 self.gap_spinbox.setValue(int(default_gap))
@@ -247,13 +251,14 @@ class MainWindow(QMainWindow):
 
     def save_data(self):
         gap = self.gap_spinbox.value()
+        filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
         connection_params = {
             "gap": gap,
         }
-        with open("connection_params.json", "r") as f:
+        with open(filename, "r") as f:
             connection_params = json.load(f)
             connection_params["gap"] = gap
-        with open("connection_params.json", "w") as f:
+        with open(filename, "w") as f:
             json.dump(connection_params, f)
 
 class ColumnSelectionDialog(QDialog):
@@ -272,7 +277,8 @@ class ColumnSelectionDialog(QDialog):
         self.link_combo.addItems(columns)
         self.date_combo.addItems(columns)
         try :
-            with open("connection_params.json", "r") as f:
+            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+            with open(filename, "r") as f:
                 connection_params = json.load(f)
                 default_geom = connection_params["geom"]
                 default_yaw = connection_params["yaw"]
@@ -317,13 +323,14 @@ class ColumnSelectionDialog(QDialog):
             "link": link,
             "date": date,
         }
-        with open("connection_params.json", "r") as f:
+        filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        with open(filename, "r") as f:
             connection_params = json.load(f)
             connection_params["geom"] = geom
             connection_params["yaw"] = yaw
             connection_params["link"] = link
             connection_params["date"] = date
-        with open("connection_params.json", "w") as f:
+        with open(filename, "w") as f:
             json.dump(connection_params, f)
 
     def get_columns(self):
