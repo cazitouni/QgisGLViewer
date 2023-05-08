@@ -9,12 +9,18 @@ def connector(x, y, params):
     yaw = params['yaw']
     date = params['date']
     crs = params['crs']
-    query = 'SELECT {}, {}, ST_X({}) as x, ST_Y({}) as Y, {}  FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID({}, {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) ORDER BY ST_Distance(ST_SetSRID({}, {}), ST_SetSRID(ST_MakePoint({}, {}), {})) LIMIT 1'.format(link, yaw, geom, geom, date, schema, table, geom, crs, x, y, crs, 10, geom, crs, x, y, crs)
+    query_crs = 'SELECT ST_SRID({}) FROM "{}"."{}" LIMIT 1'.format(geom, schema, table)
+    cursor.execute(query_crs)
+    result_crs = cursor.fetchone()[0]
+    print(result_crs)
+    query = 'SELECT "{}", "{}", ST_X("{}") as x, ST_Y("{}") as Y, "{}"  FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) ORDER BY ST_Distance(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {})) LIMIT 1'.format(link, yaw, geom, geom, date, schema, table, geom, crs, x, y, crs, 10, geom, crs, x, y, crs)
     try : 
         cursor.execute(query)
         result = cursor.fetchone()
         url = result[0]
         direction = result[1]
+        if result_crs == 4326:
+            direction = 360 - (direction - 90)
         pointReal = QgsPointXY(result[2], result[3])
         year  = result[4]
     except Exception : 
@@ -52,6 +58,7 @@ def connector_gpkg(x, y, params):
     crs = params['crs']
     layer = QgsVectorLayer("{}|layername={}".format(schema, table), "images", "ogr")
     if layer.isValid():
+        layer_crs = layer.crs().authid()
         crs = QgsCoordinateReferenceSystem(crs)
         transform = QgsCoordinateTransform(crs, QgsCoordinateReferenceSystem("EPSG:4326"), QgsProject.instance())
         point = QgsPointXY(x, y)
@@ -65,5 +72,8 @@ def connector_gpkg(x, y, params):
             url = closest_feature[link]
             direction = closest_feature[yaw]
             year = closest_feature[date]
-            pointReal = QgsPointXY(closest_feature.geometry().asPoint())
+            pointReal = QgsPointXY(closest_feature.geometry().asPoint())  
+        if layer_crs == "EPSG:4326" : 
+            direction = 360 - (direction - 90)
+
         return url, direction, pointReal, year

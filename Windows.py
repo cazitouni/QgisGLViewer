@@ -85,6 +85,14 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_username.setText(connection_params["username"])
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
+        except FileNotFoundError :
+            pass
+        except KeyError:
+            pass
+        try:
+            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+            with open(filename, "r") as f:
+                connection_params = json.load(f)
                 self.lineEdit_file.setText(connection_params["file"])
         except FileNotFoundError :
             pass
@@ -168,6 +176,8 @@ class MainWindow(QMainWindow):
                 date = date.toString()
             elif isinstance(date, datetime.datetime):
                 date = date.strftime('%Y-%m-%d %H:%M:%S')
+            elif isinstance(date, datetime.date): 
+                date = date.strftime('%Y-%m-%d')
             comboBox1.addItem(date)
         date_label = QLabel('Date')
         comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
