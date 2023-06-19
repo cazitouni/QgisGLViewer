@@ -103,7 +103,6 @@ class MapManager:
         else :
             line.addPoint((QgsPointXY(x1, y1)))
             line.addPoint((QgsPointXY(x2, y2)))
-        self.map_canvas.refresh()
 
     def modify_line_length(self, new_length):
         self.new_length = new_length

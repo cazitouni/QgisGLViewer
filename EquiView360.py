@@ -1,3 +1,4 @@
+import os
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PyQt5 import  QtCore
@@ -28,6 +29,9 @@ class GLWidget(QGLWidget):
                 response = requests.get(self.url)
                 self.image = Image.open(BytesIO(response.content))
             else :
+                if self.params['path_type']== "Relative" : 
+                    project_path = os.path.dirname(QgsProject.instance().fileName())
+                    self.url = project_path + self.url
                 self.image = Image.open(self.url)
         except Exception:
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
@@ -125,6 +129,9 @@ class GLWidget(QGLWidget):
                         response = requests.get(self.url)
                         self.image = Image.open(BytesIO(response.content))
                     else :
+                        if self.params['path_type']== "Relative" : 
+                            project_path = os.path.dirname(QgsProject.instance().fileName())
+                            self.url = project_path + self.url
                         self.image = Image.open(self.url)
                     self.image_width, self.image_height = self.image.size
                     self.initializeGL()
