@@ -139,8 +139,8 @@ class GLViewer:
                     second_dialog = ColumnSelectionDialog(columns)
                     result = second_dialog.exec_()
                     if result == QDialog.Accepted:
-                        geom, yaw, link, date, path_type = second_dialog.get_columns()
-                        params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "schema":schema, "table":table, "crs": project_crs, "path_type" : path_type}
+                        geom, yaw, link, date= second_dialog.get_columns()
+                        params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "schema":schema, "table":table, "crs": project_crs}
                         return params
                     else:
                         pass
@@ -155,8 +155,8 @@ class GLViewer:
                 second_dialog = ColumnSelectionDialog(columns)
                 result = second_dialog.exec_()
                 if result == QDialog.Accepted:
-                    geom, yaw, link, date, path_type = second_dialog.get_columns()
-                    params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "table": layer, "schema": connection, "crs": project_crs,  "path_type" : path_type}
+                    geom, yaw, link, date= second_dialog.get_columns()
+                    params = {'conn': conn, "geom":geom, "yaw": yaw, "link":link, "date":date, "table": layer, "schema": connection, "crs": project_crs}
                     return params
                 else:
                     pass

@@ -20,6 +20,11 @@ class GLWidget(QGLWidget):
         self.iface = iface
         self.x = x
         self.y = y
+        self.prev_dx = 0
+        self.prev_dy = 0
+        self.inertia_timer = QtCore.QTimer()
+        self.inertia_timer.timeout.connect(self.apply_inertia)
+        self.inertia_timer.setInterval(16)
         self.direction = direction
         self.angle_degrees = angle_degrees
         self.params = params
@@ -29,7 +34,8 @@ class GLWidget(QGLWidget):
                 response = requests.get(self.url)
                 self.image = Image.open(BytesIO(response.content))
             else :
-                if self.params['path_type']== "Relative" : 
+                if self.url.startswith('./'):
+                    self.url = self.url[1:] 
                     project_path = os.path.dirname(QgsProject.instance().fileName())
                     self.url = project_path + self.url
                 self.image = Image.open(self.url)
@@ -129,7 +135,8 @@ class GLWidget(QGLWidget):
                         response = requests.get(self.url)
                         self.image = Image.open(BytesIO(response.content))
                     else :
-                        if self.params['path_type']== "Relative" : 
+                        if self.url.startswith('./'):
+                            self.url = self.url[1:] 
                             project_path = os.path.dirname(QgsProject.instance().fileName())
                             self.url = project_path + self.url
                         self.image = Image.open(self.url)
@@ -156,8 +163,8 @@ class GLWidget(QGLWidget):
         if self.moving:
             dx = event.pos().x() - self.mouse_x
             dy = event.pos().y() - self.mouse_y
-            dx *= 0.1
-            dy *= 0.1
+            dx *= 0.05  # Adjust the scaling factor to control the speed (smaller value = slower movement)
+            dy *= 0.05  # Adjust the scaling factor to control the speed (smaller value = slower movement)
             self.yaw -= dx
             self.pitch -= dy
             self.pitch = min(max(self.pitch, -90), 90)
@@ -165,6 +172,9 @@ class GLWidget(QGLWidget):
             self.direction += dx
             self.map_manager.modify_line_direction(self.direction, self.instance)
             self.update()
+        self.prev_dx = dx
+        self.prev_dy = dy
+        self.inertia_timer.start(10)
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y()
@@ -193,3 +203,19 @@ class GLWidget(QGLWidget):
             x_new = point.x()
             y_new = point.y()
         return x_new, y_new
+    
+    def apply_inertia(self):
+        inertia_factor = 0.9  # Adjust the inertia factor to control the speed of inertia (smaller value = slower inertia)
+        self.yaw -= self.prev_dx
+        self.pitch -= self.prev_dy
+        self.pitch = min(max(self.pitch, -90), 90)
+        
+        self.direction += self.prev_dx  # Modify line direction based on prev_dx
+        
+        self.map_manager.modify_line_direction(self.direction, self.instance)
+        
+        self.update()
+        self.prev_dx *= inertia_factor
+        self.prev_dy *= inertia_factor
+        if abs(self.prev_dx) < 0.01 and abs(self.prev_dy) < 0.01:
+            self.inertia_timer.stop()
