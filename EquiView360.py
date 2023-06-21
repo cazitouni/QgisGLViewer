@@ -163,8 +163,8 @@ class GLWidget(QGLWidget):
         if self.moving:
             dx = event.pos().x() - self.mouse_x
             dy = event.pos().y() - self.mouse_y
-            dx *= 0.05  # Adjust the scaling factor to control the speed (smaller value = slower movement)
-            dy *= 0.05  # Adjust the scaling factor to control the speed (smaller value = slower movement)
+            dx *= 0.05
+            dy *= 0.05
             self.yaw -= dx
             self.pitch -= dy
             self.pitch = min(max(self.pitch, -90), 90)
@@ -205,15 +205,12 @@ class GLWidget(QGLWidget):
         return x_new, y_new
     
     def apply_inertia(self):
-        inertia_factor = 0.9  # Adjust the inertia factor to control the speed of inertia (smaller value = slower inertia)
+        inertia_factor = 0.9
         self.yaw -= self.prev_dx
         self.pitch -= self.prev_dy
         self.pitch = min(max(self.pitch, -90), 90)
-        
-        self.direction += self.prev_dx  # Modify line direction based on prev_dx
-        
+        self.direction += self.prev_dx
         self.map_manager.modify_line_direction(self.direction, self.instance)
-        
         self.update()
         self.prev_dx *= inertia_factor
         self.prev_dy *= inertia_factor

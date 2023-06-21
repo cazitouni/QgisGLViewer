@@ -28,7 +28,7 @@ changelog= V1.1 : fix a postgis connection issue
            V1.4 : Support for relative paths, fixing minor cursor glitch, add inertia effect to the view
 
 # Tags are comma separated with spaces allowed
-tags=equirectangular, 360, streetview, viewer, perspective, opengl
+tags=equirectangular, 360, panorama, streetview, viewer, perspective, opengl
 
 homepage=https://github.com/cazitouni/QgisGLViewer
 category=Plugins
