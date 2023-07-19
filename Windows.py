@@ -1,6 +1,6 @@
 from qgis.PyQt.QtWidgets import  QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import Qt, QDate, QDateTime
+from qgis.PyQt.QtCore import Qt, QDate, QDateTime, pyqtSignal
 from qgis.core import QgsApplication
 from .EquiView360 import GLWidget
 import datetime
@@ -154,7 +154,7 @@ class ConnectionDialog(QDialog):
 
 class MainWindow(QMainWindow):
     instances = []
-    def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, date, x, y, params, gpkg):
+    def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, date, x, y, params, gpkg, dates):
         super().__init__(iface.mainWindow()) 
         MainWindow.instances.append(self)
         self.iface = iface
@@ -170,20 +170,21 @@ class MainWindow(QMainWindow):
         self.gl_widget2 = None
         horizontalLayout = QHBoxLayout()
         self.horizontalLayout2 = QHBoxLayout()
-        comboBox1 = QComboBox()
-        if date is not None :
-            if type(date) == QDate or type(date) == QDateTime :
-                date = date.toString()
-            elif isinstance(date, datetime.datetime):
-                date = date.strftime('%Y-%m-%d %H:%M:%S')
-            elif isinstance(date, datetime.date): 
-                date = date.strftime('%Y-%m-%d')
-            comboBox1.addItem(date)
+        self.comboBox1 = QComboBox()
+        if dates is not None:
+            for date in dates:
+                if type(date) == QDate or type(date) == QDateTime:
+                    date = date.toString()
+                elif isinstance(date, datetime.datetime):
+                    date = date.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(date, datetime.date): 
+                    date = date.strftime('%Y-%m-%d')
+                self.comboBox1.addItem(date)
         date_label = QLabel('Date')
-        comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         horizontalLayout.setStretchFactor(date_label, 0)
         horizontalLayout.addWidget(date_label)
-        horizontalLayout.addWidget(comboBox1)
+        horizontalLayout.addWidget(self.comboBox1)
         self.setFocus()
         gap_label = QLabel('Gap')
         self.gap_spinbox = QSpinBox()

@@ -30,9 +30,9 @@ class PointTool(QgsMapTool):
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         if self.gpkg is not True :
-            self.url, self.direction, self.pointReal, self.year = connector(self.point.x(), self.point.y(), self.params)
+            self.url, self.direction, self.pointReal, self.year, self.dates = connector(self.point.x(), self.point.y(), self.params)
         else :
-            self.url, self.direction, self.pointReal, self.year = connector_gpkg(self.point.x(), self.point.y(), self.params)
+            self.url, self.direction, self.pointReal, self.year, self.dates = connector_gpkg(self.point.x(), self.point.y(), self.params)
 
     def canvasReleaseEvent(self, event):
         x = event.pos().x()
@@ -47,7 +47,7 @@ class PointTool(QgsMapTool):
         if self.url != 0 and self.direction is not None :
             map_manager = MapManager(self.canvas)
             try :
-                self.dlg = MainWindow(self.iface, self.url, self.pointReal, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg)
+                self.dlg = MainWindow(self.iface, self.url, self.pointReal, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg, self.dates)
             except Exception as e :
                 self.iface.messageBar().pushMessage(str(e), level=Qgis.Warning)
                 map_manager.remove_all_points_from_map()
@@ -59,8 +59,6 @@ class PointTool(QgsMapTool):
             self.dlg.move(int(x), int(y))
             self.dlg.show()
             self.iface.mapCanvas().unsetMapTool(self)
-        else :
-            self.iface.messageBar().pushMessage("No image for this coordinates", level=Qgis.Info)
 
     def canvasMoveEvent(self, event):
         if event.buttons() & Qt.LeftButton:

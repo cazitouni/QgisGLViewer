@@ -1,6 +1,6 @@
 from qgis.core import QgsPointXY, QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsProject
 
-def connector(x, y, params):
+def connector(x, y, params, date_selected=None):
     cursor = params['conn'].cursor()
     schema = params['schema']
     table = params['table']
@@ -12,8 +12,16 @@ def connector(x, y, params):
     query_crs = 'SELECT ST_SRID({}) FROM "{}"."{}" LIMIT 1'.format(geom, schema, table)
     cursor.execute(query_crs)
     result_crs = cursor.fetchone()[0]
-    print(result_crs)
-    query = 'SELECT "{}", "{}", ST_X("{}") as x, ST_Y("{}") as Y, "{}"  FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) ORDER BY ST_Distance(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {})) LIMIT 1'.format(link, yaw, geom, geom, date, schema, table, geom, crs, x, y, crs, 10, geom, crs, x, y, crs)
+    query_dates = 'SELECT DISTINCT "{}" FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) ORDER BY "{}" DESC'.format(date, schema, table, geom, crs, x, y, crs, 5, date)
+    try : 
+        cursor.execute(query_dates)
+        dates = cursor.fetchall()
+        dates = [date[0] for date in dates]
+    except Exception :
+         dates = None
+    if date_selected is None :
+        date_selected = dates[0]
+    query = 'SELECT "{}", "{}", ST_X("{}") as x, ST_Y("{}") as Y, "{}"  FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) AND "{}" = \'{}\' ORDER BY ST_Distance(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {})) LIMIT 1'.format(link, yaw, geom, geom, date, schema, table, geom, crs, x, y, crs, 10, date, date_selected, geom, crs, x, y, crs)
     try : 
         cursor.execute(query)
         result = cursor.fetchone()
@@ -29,7 +37,7 @@ def connector(x, y, params):
         pointReal = None
         year = None
     
-    return url, direction, pointReal, year
+    return url, direction, pointReal, year, dates
 
 def retrieve_columns(schema, table, cursor):
     query = "SELECT column_name FROM information_schema.columns WHERE table_name = %s AND table_schema = %s"
