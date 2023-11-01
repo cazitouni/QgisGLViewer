@@ -42,6 +42,15 @@ class GLWidget(QGLWidget):
         except Exception:
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
         self.image_width, self.image_height = self.image.size
+        if  params["low_degree"]== "270°":
+            original_width, original_height = self.image.size
+            original_image = self.image
+            self.image_width = original_width + (original_width // 6) * 2
+            self.image_height = original_height + (original_height  // 6) *2
+            self.image= Image.new('RGB', (self.image_width, self.image_height), (0, 0, 0))
+            paste_x = (self.image_width- original_width) // 2
+            paste_y = (self.image_height - original_height ) // 2
+            self.image.paste(original_image, (paste_x, paste_y))
         self.yaw = 90 - (direction - ((450 - angle_degrees) % 360))
         self.pitch = 0
         self.prev_dx = 0
@@ -53,52 +62,59 @@ class GLWidget(QGLWidget):
         self.gpkg = gpkg
 
     def initializeGL(self):
-        glClearColor(1.0, 1.0, 1.0, 1.0)
-        glEnable(GL_TEXTURE_2D)
-        self.texture = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, self.texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, self.image_width, self.image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, self.image.tobytes())
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        self.sphere = gluNewQuadric()
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(90, self.width()/self.height(), 0.1, 1000)
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        try:
+            glClearColor(1.0, 1.0, 1.0, 1.0)
+            glEnable(GL_TEXTURE_2D)
+            self.texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, self.image_width, self.image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, self.image.tobytes())
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            self.sphere = gluNewQuadric()
+            glMatrixMode(GL_PROJECTION)
+            glLoadIdentity()
+            gluPerspective(90, self.width()/self.height(), 0.1, 1000)
+            glMatrixMode(GL_MODELVIEW)
+            glLoadIdentity()
+        except Exception as e : 
+            self.iface.messageBar().pushMessage(str(e), level=Qgis.Warning)
+
 
     def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glPushMatrix()
-        glRotatef(self.pitch, 1, 0, 0)
-        glRotatef(self.yaw, 0, 1, 0)
-        glRotatef(90, 1, 0, 0)
-        glRotatef(90, 0, 0, 1)
-        gluQuadricTexture(self.sphere, True)
-        gluSphere(self.sphere, 1, 100, 100)
-        glPopMatrix()
-        if self.show_crosshair:
-            glMatrixMode(GL_PROJECTION)
+        try:
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             glPushMatrix()
-            glLoadIdentity()
-            gluOrtho2D(0, self.width(), self.height(), 0)
-            glMatrixMode(GL_MODELVIEW)
-            glPushMatrix()
-            glLoadIdentity()
-            glDisable(GL_DEPTH_TEST)
-            glColor3f(1.0, 1, 1)
-            glLineWidth(4.0)
-            glBegin(GL_LINES)
-            glVertex2f(self.width()/2 - 10, self.height()/2)
-            glVertex2f(self.width()/2 + 10, self.height()/2)
-            glVertex2f(self.width()/2, self.height()/2 - 10)
-            glVertex2f(self.width()/2, self.height()/2 + 10)
-            glEnd()
-            glEnable(GL_DEPTH_TEST)
+            glRotatef(self.pitch, 1, 0, 0)
+            glRotatef(self.yaw, 0, 1, 0)
+            glRotatef(90, 1, 0, 0)
+            glRotatef(90, 0, 0, 1)
+            gluQuadricTexture(self.sphere, True)
+            gluSphere(self.sphere, 1, 100, 100)
             glPopMatrix()
-            glMatrixMode(GL_PROJECTION)
-            glPopMatrix()
-            glMatrixMode(GL_MODELVIEW)
+            if self.show_crosshair:
+                glMatrixMode(GL_PROJECTION)
+                glPushMatrix()
+                glLoadIdentity()
+                gluOrtho2D(0, self.width(), self.height(), 0)
+                glMatrixMode(GL_MODELVIEW)
+                glPushMatrix()
+                glLoadIdentity()
+                glDisable(GL_DEPTH_TEST)
+                glColor3f(1.0, 1, 1)
+                glLineWidth(4.0)
+                glBegin(GL_LINES)
+                glVertex2f(self.width()/2 - 10, self.height()/2)
+                glVertex2f(self.width()/2 + 10, self.height()/2)
+                glVertex2f(self.width()/2, self.height()/2 - 10)
+                glVertex2f(self.width()/2, self.height()/2 + 10)
+                glEnd()
+                glEnable(GL_DEPTH_TEST)
+                glPopMatrix()
+                glMatrixMode(GL_PROJECTION)
+                glPopMatrix()
+                glMatrixMode(GL_MODELVIEW)
+        except Exception as e : 
+            self.iface.messageBar().pushMessage(str(e), level=Qgis.Warning)
 
     def resizeGL(self, width, height):
         glViewport(0, 0, width, height)
@@ -219,7 +235,7 @@ class GLWidget(QGLWidget):
             if self.gpkg != True : 
                 self.img, self.dir, self.pointReal, self.year, self.dates = connector(self.x, self.y, self.params, date_selected)
             else  :
-                self.img, self.dir, self.pointReal, self.year, self.dates = connector_gpkg(self.x, self.y, self.params)
+                self.img, self.dir, self.pointReal, self.year, self.dates = connector_gpkg(self.x, self.y, self.params, date_selected)
             if self.img != self.url and self.img != 0 :
                 self.url  = self.img
                 if self.instance == 1 :

@@ -46,19 +46,14 @@ class PointTool(QgsMapTool):
         angle_degrees = (angle * 180 / math.pi)
         if self.url != 0 and self.direction is not None :
             map_manager = MapManager(self.canvas)
-            try :
-                self.dlg = MainWindow(self.iface, self.url, self.pointReal, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg, self.dates)
-            except Exception as e :
-                self.iface.messageBar().pushMessage(str(e), level=Qgis.Warning)
-                map_manager.remove_all_points_from_map()
-                return
+            self.dlg = MainWindow(self.iface, self.url, self.pointReal, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg, self.dates)
             screen = QDesktopWidget().screenGeometry()
             size = self.dlg.geometry()
             x = (screen.width() - size.width()) / 2
             y = (screen.height() - size.height()) / 2
             self.dlg.move(int(x), int(y))
             self.dlg.show()
-            self.iface.mapCanvas().unsetMapTool(self)
+        self.iface.mapCanvas().unsetMapTool(self)
 
     def canvasMoveEvent(self, event):
         if event.buttons() & Qt.LeftButton:

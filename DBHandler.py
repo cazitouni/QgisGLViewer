@@ -1,4 +1,5 @@
-from qgis.core import QgsPointXY, QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsProject
+from qgis.core import QgsPointXY, QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsProject, Qgis
+import sqlite3
 
 def connector(x, y, params, date_selected=None):
     cursor = params['conn'].cursor()
@@ -57,13 +58,14 @@ def retrieve_columns_gpkg(cursor):
     cursor.close()
     return columns, layer[0]
 
-def connector_gpkg(x, y, params):
+def connector_gpkg(x, y, params, date_selected=None):
     schema = params['schema']
     table = params['table']
     link = params['link']
     yaw = params['yaw']
     date = params['date']
     crs = params['crs']
+    dates = []
     layer = QgsVectorLayer("{}|layername={}".format(schema, table), "images", "ogr")
     if layer.isValid():
         layer_crs = layer.crs().authid()
@@ -72,16 +74,50 @@ def connector_gpkg(x, y, params):
         point = QgsPointXY(x, y)
         point = transform.transform(point)
         point_geometry = QgsGeometry.fromPointXY(point)
-        closest_feature = min(layer.getFeatures(), key=lambda f: point_geometry.distance(f.geometry()))
-        distance = point_geometry.distance(closest_feature.geometry())
-        if distance > 10:
-            return 0, None, None, None
+        closest_features = []
+
+        if date_selected is not None:
+            for feature in layer.getFeatures():
+                if feature[date] == date_selected:
+                    closest_features.append(feature)
+                    dates.append(feature[date])
         else:
-            url = closest_feature[link]
-            direction = closest_feature[yaw]
-            year = closest_feature[date]
-            pointReal = QgsPointXY(closest_feature.geometry().asPoint())  
-        if layer_crs == "EPSG:4326" : 
+            for feature in layer.getFeatures():
+                distance = point_geometry.distance(feature.geometry())
+                if distance <= 10:
+                    closest_features.append(feature)
+                    dates.append(feature[date])
+
+        if not closest_features:
+            return 0, None, None, None, None
+
+
+        # Sort closest_features by geometry distance (closest first)
+        closest_features.sort(key=lambda f: point_geometry.distance(f.geometry()))
+
+        # Select the feature with the closest geometry
+        closest_feature = closest_features[0]
+
+        # Now, within the features with the same geometry, sort by date in descending order (most recent first)
+        closest_features_same_geometry = [f for f in closest_features if f.geometry().equals(closest_feature.geometry())]
+        closest_features_same_geometry.sort(key=lambda f: f[date], reverse=True)
+
+        # Select the feature with the most recent date among those with the same geometry
+        closest_feature = closest_features_same_geometry[0]
+
+
+        url = closest_feature[link]
+        direction = closest_feature[yaw]
+        year = closest_feature[date]
+        pointReal = QgsPointXY(closest_feature.geometry().asPoint())
+
+        if layer_crs == "EPSG:4326":
             direction = 360 - (direction - 90)
 
-        return url, direction, pointReal, year
+
+        dates = sorted(set(dates), reverse=True)
+
+        return url, direction, pointReal, year, dates
+    else:
+        return 0, None, None, None, None
+
