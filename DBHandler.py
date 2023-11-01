@@ -67,6 +67,7 @@ def connector_gpkg(x, y, params, date_selected=None):
     crs = params['crs']
     dates = []
     layer = QgsVectorLayer("{}|layername={}".format(schema, table), "images", "ogr")
+    layer.loadNamedStyle('')
     if layer.isValid():
         layer_crs = layer.crs().authid()
         crs = QgsCoordinateReferenceSystem(crs)
@@ -75,7 +76,6 @@ def connector_gpkg(x, y, params, date_selected=None):
         point = transform.transform(point)
         point_geometry = QgsGeometry.fromPointXY(point)
         closest_features = []
-
         if date_selected is not None:
             for feature in layer.getFeatures():
                 if feature[date] == date_selected:
@@ -87,36 +87,20 @@ def connector_gpkg(x, y, params, date_selected=None):
                 if distance <= 10:
                     closest_features.append(feature)
                     dates.append(feature[date])
-
         if not closest_features:
             return 0, None, None, None, None
-
-
-        # Sort closest_features by geometry distance (closest first)
         closest_features.sort(key=lambda f: point_geometry.distance(f.geometry()))
-
-        # Select the feature with the closest geometry
         closest_feature = closest_features[0]
-
-        # Now, within the features with the same geometry, sort by date in descending order (most recent first)
         closest_features_same_geometry = [f for f in closest_features if f.geometry().equals(closest_feature.geometry())]
         closest_features_same_geometry.sort(key=lambda f: f[date], reverse=True)
-
-        # Select the feature with the most recent date among those with the same geometry
         closest_feature = closest_features_same_geometry[0]
-
-
         url = closest_feature[link]
         direction = closest_feature[yaw]
         year = closest_feature[date]
         pointReal = QgsPointXY(closest_feature.geometry().asPoint())
-
         if layer_crs == "EPSG:4326":
             direction = 360 - (direction - 90)
-
-
         dates = sorted(set(dates), reverse=True)
-
         return url, direction, pointReal, year, dates
     else:
         return 0, None, None, None, None
