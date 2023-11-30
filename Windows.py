@@ -155,7 +155,7 @@ class ConnectionDialog(QDialog):
 
 class MainWindow(QMainWindow):
     instances = []
-    def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, date, x, y, params, gpkg, dates):
+    def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, x, y, params, gpkg, dates):
         super().__init__(iface.mainWindow()) 
         MainWindow.instances.append(self)
         self.iface = iface
@@ -286,13 +286,10 @@ class ColumnSelectionDialog(QDialog):
         self.link_combo = QComboBox()
         self.date_label = QLabel("Date column:")
         self.date_combo = QComboBox()
-        self.degree_label = QLabel("Image mode:")
-        self.degree_combo = QComboBox()
         self.geom_combo.addItems(columns)
         self.yaw_combo.addItems(columns)
         self.link_combo.addItems(columns)
         self.date_combo.addItems(columns)
-        self.degree_combo.addItems(["270°", "360°"])
         try :
             filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
             with open(filename, "r") as f:
@@ -301,7 +298,6 @@ class ColumnSelectionDialog(QDialog):
                 default_yaw = connection_params["yaw"]
                 default_link = connection_params["link"]
                 default_date = connection_params["date"]
-                default_degree = '360°'
                 default_geom_index = self.date_combo.findText(default_geom)
                 self.geom_combo.setCurrentIndex(default_geom_index)
                 default_yaw_index = self.yaw_combo.findText(default_yaw)
@@ -310,8 +306,6 @@ class ColumnSelectionDialog(QDialog):
                 self.link_combo.setCurrentIndex(default_link_index)
                 default_date_index = self.date_combo.findText(default_date)
                 self.date_combo.setCurrentIndex(default_date_index)
-                default_degree_index = self.degree_combo.findText(default_degree)
-                self.degree_combo.setCurrentIndex(default_degree_index)
         except Exception :
             pass
         self.ok_button = QPushButton("OK")
@@ -326,8 +320,6 @@ class ColumnSelectionDialog(QDialog):
         layout.addWidget(self.link_combo)
         layout.addWidget(self.date_label)
         layout.addWidget(self.date_combo)
-        layout.addWidget(self.degree_label)
-        layout.addWidget(self.degree_combo)
         layout.addWidget(self.ok_button)
         self.setLayout(layout)
         self.setFixedWidth(400)
@@ -339,13 +331,11 @@ class ColumnSelectionDialog(QDialog):
         yaw = self.yaw_combo.currentText()
         link = self.link_combo.currentText()
         date = self.date_combo.currentText()
-        degree = self.degree_combo.currentText()
         connection_params = {
             "geom": geom,
             "yaw": yaw,
             "link": link,
             "date": date,
-            "low_degree": degree
         }
         filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
         with open(filename, "r") as f:
@@ -354,7 +344,6 @@ class ColumnSelectionDialog(QDialog):
             connection_params["yaw"] = yaw
             connection_params["link"] = link
             connection_params["date"] = date
-            connection_params["low_degree"] = degree
         with open(filename, "w") as f:
             json.dump(connection_params, f)
 
@@ -363,5 +352,4 @@ class ColumnSelectionDialog(QDialog):
         yaw = self.yaw_combo.currentText()
         link = self.link_combo.currentText()
         date = self.date_combo.currentText()
-        degree = self.degree_combo.currentText()
-        return geom, yaw, link, date, degree
+        return geom, yaw, link, date

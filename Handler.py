@@ -29,10 +29,10 @@ class PointTool(QgsMapTool):
         x = event.pos().x()
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        if self.gpkg is not True :
-            self.url, self.direction, self.pointReal, self.year, self.dates = connector(self.point.x(), self.point.y(), self.params)
+        if self.gpkg is False :
+            self.url, self.direction, self.pointReal, self.dates = connector(self.point.x(), self.point.y(), self.params)
         else :
-            self.url, self.direction, self.pointReal, self.year, self.dates = connector_gpkg(self.point.x(), self.point.y(), self.params)
+            self.url, self.direction, self.pointReal, self.dates = connector_gpkg(self.point.x(), self.point.y(), self.params)
 
     def canvasReleaseEvent(self, event):
         x = event.pos().x()
@@ -46,7 +46,7 @@ class PointTool(QgsMapTool):
         angle_degrees = (angle * 180 / math.pi)
         if self.url != 0 and self.direction is not None :
             map_manager = MapManager(self.canvas)
-            self.dlg = MainWindow(self.iface, self.url, self.pointReal, map_manager, float(self.direction), angle_degrees, self.year, self.point.x(), self.point.y(), self.params, self.gpkg, self.dates)
+            self.dlg = MainWindow(self.iface, self.url, self.pointReal, map_manager, float(self.direction), angle_degrees, self.point.x(), self.point.y(), self.params, self.gpkg, self.dates)
             screen = QDesktopWidget().screenGeometry()
             size = self.dlg.geometry()
             x = (screen.width() - size.width()) / 2

@@ -1,5 +1,4 @@
-from qgis.core import QgsPointXY, QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsProject, Qgis
-import sqlite3
+from qgis.core import QgsPointXY, QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsProject
 
 def connector(x, y, params, date_selected=None):
     cursor = params['conn'].cursor()
@@ -10,35 +9,37 @@ def connector(x, y, params, date_selected=None):
     yaw = params['yaw']
     date = params['date']
     crs = params['crs']
-    query_crs = 'SELECT ST_SRID({}) FROM "{}"."{}" LIMIT 1'.format(geom, schema, table)
-    cursor.execute(query_crs)
-    result_crs = cursor.fetchone()[0]
-    query_dates = 'SELECT DISTINCT "{}" FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) ORDER BY "{}" DESC'.format(date, schema, table, geom, crs, x, y, crs, 5, date)
-    try : 
-        cursor.execute(query_dates)
-        dates = cursor.fetchall()
-        dates = [date[0] for date in dates]
-    except Exception :
-         dates = None
-    if date_selected is None :
-        date_selected = dates[0]
-    query = 'SELECT "{}", "{}", ST_X("{}") as x, ST_Y("{}") as Y, "{}"  FROM "{}"."{}" WHERE ST_DWithin(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {}), {}) AND "{}" = \'{}\' ORDER BY ST_Distance(ST_SetSRID("{}", {}), ST_SetSRID(ST_MakePoint({}, {}), {})) LIMIT 1'.format(link, yaw, geom, geom, date, schema, table, geom, crs, x, y, crs, 10, date, date_selected, geom, crs, x, y, crs)
-    try : 
-        cursor.execute(query)
-        result = cursor.fetchone()
-        url = result[0]
-        direction = result[1]
-        if result_crs == 4326:
-            direction = 360 - (direction - 90)
-        pointReal = QgsPointXY(result[2], result[3])
-        year  = result[4]
-    except Exception : 
+    query = (
+        f'WITH pt AS (SELECT ST_SetSRID(ST_MakePoint({x}, {y}), {crs}) AS geom)'
+        f' SELECT DISTINCT ON ("{date}")'
+        f' "{date}", "{link}", "{yaw}", ST_X("{geom}") AS x, ST_Y("{geom}") AS Y, ST_SRID({geom})'
+        f' FROM "{schema}"."{table}", pt'
+        f' WHERE ST_DWithin("{geom}", pt.geom, 5)'
+        f' ORDER BY "{date}", ST_Distance("{geom}", pt.geom)'
+    )
+    cursor.execute(query)
+    data = cursor.fetchall()
+    if data :
+        dates = [str(date[0]) for date in data]
+        if not date_selected or date_selected not in dates:
+            date_selected = dates[0]
+            url = data[dates.index(date_selected)][1]
+            direction = float(data[dates.index(date_selected)][2])
+            if data[dates.index(date_selected)][5] == 4326:
+                direction = 360 - (direction - 90)
+            pointReal = QgsPointXY(data[dates.index(date_selected)][3], data[dates.index(date_selected)][4])
+        else:
+            url = data[dates.index(date_selected)][1]
+            direction = float(data[dates.index(date_selected)][2])
+            if data[dates.index(date_selected)][5] == 4326:
+                direction = 360 - (direction - 90)
+            pointReal = QgsPointXY(data[dates.index(date_selected)][3], data[dates.index(date_selected)][4])
+    else : 
         url = 0
         direction = None
         pointReal = None
-        year = None
-    
-    return url, direction, pointReal, year, dates
+        dates= None
+    return url, direction, pointReal, dates
 
 def retrieve_columns(schema, table, cursor):
     query = "SELECT column_name FROM information_schema.columns WHERE table_name = %s AND table_schema = %s"

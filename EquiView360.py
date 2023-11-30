@@ -27,6 +27,7 @@ class GLWidget(QGLWidget):
         self.angle_degrees = angle_degrees
         self.params = params
         self.parent = parent
+        self.combo_box_changed_manually = True
         self.parent.comboBox1.currentIndexChanged.connect(lambda index: self.date_change(self.parent.comboBox1.currentText()))
 
         try :
@@ -42,6 +43,7 @@ class GLWidget(QGLWidget):
         except Exception:
             iface.messageBar().pushMessage("Unable to load the image, please verify image's source", level=Qgis.Info)
         self.image_width, self.image_height = self.image.size
+        """"
         if  params["low_degree"]== "270°":
             original_width, original_height = self.image.size
             original_image = self.image
@@ -51,6 +53,7 @@ class GLWidget(QGLWidget):
             paste_x = (self.image_width- original_width) // 2
             paste_y = (self.image_height - original_height ) // 2
             self.image.paste(original_image, (paste_x, paste_y))
+        """
         self.yaw = 90 - (direction - ((450 - angle_degrees) % 360))
         self.pitch = 0
         self.prev_dx = 0
@@ -130,56 +133,54 @@ class GLWidget(QGLWidget):
     def mouseReleaseEvent(self, event):
         if self.moving == False :
             self.setCursor(QtCore.Qt.WaitCursor)
-            try :
-                x, y = self.recalculate_coordinates(self.x, self.y, self.direction, self.parent.gap_spinbox.value())
+            self.combo_box_changed_manually = False
+            x, y = self.recalculate_coordinates(self.x, self.y, self.direction, self.parent.gap_spinbox.value())
+            self.x = x
+            self.y = y
+            if self.gpkg != True :
+                self.img, self.dir, self.pointReal, dates = connector(x, y, self.params, self.parent.comboBox1.currentText())
+            else  :
+                self.img, self.dir, self.pointReal, dates = connector_gpkg(x, y, self.params, self.parent.comboBox1.currentText())
+            if self.img != self.url and self.img != 0 :
+                self.url  = self.img
+                if self.instance == 1 :
+                    self.map_manager.remove_first_instance_points()
+                    self.map_manager.add_point_to_map(self.pointReal, self.direction, self.instance)
+                else :
+                    self.map_manager.remove_second_instance_points()
+                    self.map_manager.add_point_to_map(self.pointReal, self.direction, self.instance)
+                self.yaw = 90 - (float(self.dir) - ((450 - self.direction) % 360))
+                if "http" in self.url :
+                    response = requests.get(self.url)
+                    self.image = Image.open(BytesIO(response.content))
+                else :
+                    if self.url.startswith('./'):
+                        self.url = self.url[1:] 
+                        project_path = os.path.dirname(QgsProject.instance().fileName())
+                        self.url = project_path + self.url
+                    self.image = Image.open(self.url)
+                self.image_width, self.image_height = self.image.size
+                self.initializeGL()
+                self.paintGL()
+                self.resizeGL(self.width(), self.height())
+                self.update()
+            else :
+                x, y = self.recalculate_coordinates(self.x, self.y, self.direction, -self.parent.gap_spinbox.value())
                 self.x = x
                 self.y = y
-                if self.gpkg != True : 
-                    self.img, self.dir, self.pointReal, self.year, dates = connector(x, y, self.params)
-                else  :
-                    self.img, self.dir, self.pointReal, self.year, dates = connector_gpkg(x, y, self.params)
-                if self.img != self.url and self.img != 0 :
-                    self.url  = self.img
-                    if self.instance == 1 :
-                        self.map_manager.remove_first_instance_points()
-                        self.map_manager.add_point_to_map(self.pointReal, self.direction, self.instance)
-                    else :
-                        self.map_manager.remove_second_instance_points()
-                        self.map_manager.add_point_to_map(self.pointReal, self.direction, self.instance)
-                    self.yaw = 90 - (float(self.dir) - ((450 - self.direction) % 360))
-                    if "http" in self.url :
-                        response = requests.get(self.url)
-                        self.image = Image.open(BytesIO(response.content))
-                    else :
-                        if self.url.startswith('./'):
-                            self.url = self.url[1:] 
-                            project_path = os.path.dirname(QgsProject.instance().fileName())
-                            self.url = project_path + self.url
-                        self.image = Image.open(self.url)
-                    self.image_width, self.image_height = self.image.size
-                    self.initializeGL()
-                    self.paintGL()
-                    self.resizeGL(self.width(), self.height())
-                    self.update()
-                else :
-                    x, y = self.recalculate_coordinates(self.x, self.y, self.direction, -self.parent.gap_spinbox.value())
-                    self.x = x
-                    self.y = y
-                    self.iface.messageBar().pushMessage("No image found", level=Qgis.Info)
-                if dates is not None:
-                    self.parent.comboBox1.clear()
-                    for date in dates:
-                        if type(date) == QtCore.QDate or type(date) == QtCore.QDateTime:
-                            date = date.toString()
-                        elif isinstance(date, datetime.datetime):
-                            date = date.strftime('%Y-%m-%d %H:%M:%S')
-                        elif isinstance(date, datetime.date): 
-                            date = date.strftime('%Y-%m-%d')
-                        self.parent.comboBox1.addItem(date)
-            except Exception as e : 
-                self.iface.messageBar().pushMessage(str(self.url), level=Qgis.Warning)
-            finally : 
-                self.setCursor(QtCore.Qt.OpenHandCursor)  
+                self.iface.messageBar().pushMessage("No image found", level=Qgis.Info)
+            if dates is not None:
+                self.parent.comboBox1.clear()
+                for date in dates:
+                    if type(date) == QtCore.QDate or type(date) == QtCore.QDateTime:
+                        date = date.toString()
+                    elif isinstance(date, datetime.datetime):
+                        date = date.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(date, datetime.date): 
+                        date = date.strftime('%Y-%m-%d')
+                    self.parent.comboBox1.addItem(date)
+            self.setCursor(QtCore.Qt.OpenHandCursor)
+            self.combo_box_changed_manually = True
         if event.button() == QtCore.Qt.LeftButton:
             self.setCursor(QtCore.Qt.OpenHandCursor)
             self.moving = False
@@ -230,12 +231,12 @@ class GLWidget(QGLWidget):
         return x_new, y_new
 
     def date_change(self, date_selected):
-        self.setCursor(QtCore.Qt.WaitCursor)
-        try:
-            if self.gpkg != True : 
-                self.img, self.dir, self.pointReal, self.year, self.dates = connector(self.x, self.y, self.params, date_selected)
+        if self.combo_box_changed_manually == True :
+            self.setCursor(QtCore.Qt.WaitCursor)
+            if self.gpkg != True :
+                self.img, self.dir, self.pointReal, self.dates = connector(self.x, self.y, self.params, date_selected)
             else  :
-                self.img, self.dir, self.pointReal, self.year, self.dates = connector_gpkg(self.x, self.y, self.params, date_selected)
+                self.img, self.dir, self.pointReal, self.dates = connector_gpkg(self.x, self.y, self.params, date_selected)
             if self.img != self.url and self.img != 0 :
                 self.url  = self.img
                 if self.instance == 1 :
@@ -259,7 +260,4 @@ class GLWidget(QGLWidget):
                 self.paintGL()
                 self.resizeGL(self.width(), self.height())
                 self.update()
-        except Exception:
-            self.iface.messageBar().pushMessage(str(self.url), level=Qgis.Warning)
-        finally:
             self.setCursor(QtCore.Qt.OpenHandCursor)
