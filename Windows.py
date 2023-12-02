@@ -1,13 +1,29 @@
-from qgis.PyQt.QtWidgets import  QStackedWidget, QSpinBox, QFileDialog, QMainWindow, QHBoxLayout, QComboBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QLabel, QLineEdit, QDialog, QSizePolicy
+from qgis.PyQt.QtWidgets import (
+    QStackedWidget,
+    QSpinBox,
+    QFileDialog,
+    QMainWindow,
+    QHBoxLayout,
+    QComboBox,
+    QVBoxLayout,
+    QWidget,
+    QGridLayout,
+    QPushButton,
+    QLabel,
+    QLineEdit,
+    QDialog,
+    QSizePolicy,
+)
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import Qt, QDate, QDateTime, pyqtSignal
-from qgis.core import Qgis, QgsProject, QgsUnitTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsPointXY
+from qgis.PyQt.QtCore import Qt, QDate, QDateTime
+
 from qgis.core import QgsApplication
 from .EquiView360 import GLWidget
 import datetime
 
 import json
 import os
+
 
 class ConnectionDialog(QDialog):
     def __init__(self, parent=None):
@@ -70,14 +86,16 @@ class ConnectionDialog(QDialog):
         grid.addLayout(button_layout, 2, 0, 1, 2)
         self.setLayout(grid)
         self.setFixedWidth(400)
-        self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
+        self.setWindowIcon(QIcon(":/plugins/GLViewer/icon.png"))
         self.setWindowTitle("Connection")
         button_connect.clicked.connect(self.accept)
         button_cancel.clicked.connect(self.reject)
         button_connect.clicked.connect(self.save_connection)
         button_browse.clicked.connect(self.browse_file)
         try:
-            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+            filename = os.path.join(
+                QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+            )
             with open(filename, "r") as f:
                 connection_params = json.load(f)
                 self.lineEdit_host.setText(connection_params["host"])
@@ -86,16 +104,18 @@ class ConnectionDialog(QDialog):
                 self.lineEdit_username.setText(connection_params["username"])
                 self.lineEdit_schema.setText(connection_params["schema"])
                 self.lineEdit_table.setText(connection_params["table"])
-        except FileNotFoundError :
+        except FileNotFoundError:
             pass
         except KeyError:
             pass
         try:
-            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+            filename = os.path.join(
+                QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+            )
             with open(filename, "r") as f:
                 connection_params = json.load(f)
                 self.lineEdit_file.setText(connection_params["file"])
-        except FileNotFoundError :
+        except FileNotFoundError:
             pass
         except KeyError:
             pass
@@ -135,7 +155,9 @@ class ConnectionDialog(QDialog):
         elif index == 1:
             file = self.lineEdit_file.text()
             connection_params = {"file": file}
-        filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        filename = os.path.join(
+            QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+        )
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 existing_params = json.load(f)
@@ -149,14 +171,35 @@ class ConnectionDialog(QDialog):
     def browse_file(self):
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        file, _ = QFileDialog.getOpenFileName(self, "Select Geopackage file", "", "Geopackage (*.gpkg);;All Files (*)", options=options)
+        file, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Geopackage file",
+            "",
+            "Geopackage (*.gpkg);;All Files (*)",
+            options=options,
+        )
         if file:
             self.lineEdit_file.setText(file)
 
+
 class MainWindow(QMainWindow):
     instances = []
-    def __init__(self, iface, url, pointReal, map_manager, direction, angle_degrees, x, y, params, gpkg, dates):
-        super().__init__(iface.mainWindow()) 
+
+    def __init__(
+        self,
+        iface,
+        url,
+        pointReal,
+        map_manager,
+        direction,
+        angle_degrees,
+        x,
+        y,
+        params,
+        gpkg,
+        dates,
+    ):
+        super().__init__(iface.mainWindow())
         MainWindow.instances.append(self)
         self.iface = iface
         self.url = url
@@ -164,10 +207,10 @@ class MainWindow(QMainWindow):
         self.map_manager = map_manager
         self.direction = direction
         self.angle_degrees = angle_degrees
-        self.x = x 
-        self.y = y 
-        self.params = params 
-        self.gpkg  =gpkg
+        self.x = x
+        self.y = y
+        self.params = params
+        self.gpkg = gpkg
         self.gl_widget2 = None
         horizontalLayout = QHBoxLayout()
         self.horizontalLayout2 = QHBoxLayout()
@@ -177,33 +220,37 @@ class MainWindow(QMainWindow):
                 if type(date) == QDate or type(date) == QDateTime:
                     date = date.toString()
                 elif isinstance(date, datetime.datetime):
-                    date = date.strftime('%Y-%m-%d %H:%M:%S')
-                elif isinstance(date, datetime.date): 
-                    date = date.strftime('%Y-%m-%d')
+                    date = date.strftime("%Y-%m-%d %H:%M:%S")
+                elif isinstance(date, datetime.date):
+                    date = date.strftime("%Y-%m-%d")
                 self.comboBox1.addItem(date)
-        date_label = QLabel('Date')
+        date_label = QLabel("Date")
         self.comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         horizontalLayout.setStretchFactor(date_label, 0)
         horizontalLayout.addWidget(date_label)
         horizontalLayout.addWidget(self.comboBox1)
         self.setFocus()
-        gap_label = QLabel('Gap')
+        gap_label = QLabel("Gap")
         self.gap_spinbox = QSpinBox()
         self.gap_spinbox.setMinimum(1)
         self.gap_spinbox.setMaximum(50)
-        try :
-            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        try:
+            filename = os.path.join(
+                QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+            )
             with open(filename, "r") as f:
                 connection_params = json.load(f)
                 default_gap = connection_params["gap"]
                 self.gap_spinbox.setValue(int(default_gap))
-        except Exception :
+        except Exception:
             default_gap = 5
             self.gap_spinbox.setValue(default_gap)
-        self.gap_spinbox.valueChanged.connect(lambda value: map_manager.modify_line_length(value))
-        self.show_button = QPushButton('Comparative view')
+        self.gap_spinbox.valueChanged.connect(
+            lambda value: map_manager.modify_line_length(value)
+        )
+        self.show_button = QPushButton("Comparative view")
         self.show_button.clicked.connect(self.show_second_view)
-        self.cross_button = QPushButton('Cross position')
+        self.cross_button = QPushButton("Cross position")
         self.cross_button.clicked.connect(map_manager.check_for_crossing_lines)
         horizontalLayout.setStretchFactor(gap_label, 0)
         horizontalLayout.addWidget(self.show_button)
@@ -213,7 +260,19 @@ class MainWindow(QMainWindow):
         self.gap_spinbox.setFocusPolicy(Qt.NoFocus)
         self.verticalLayout = QVBoxLayout()
         self.map_manager.add_point_to_map(self.pointReal, self.angle_degrees, 1)
-        self.gl_widget = GLWidget(self, iface, url, direction, map_manager, angle_degrees, x, y, params, gpkg, 1)
+        self.gl_widget = GLWidget(
+            self,
+            iface,
+            url,
+            direction,
+            map_manager,
+            angle_degrees,
+            x,
+            y,
+            params,
+            gpkg,
+            1,
+        )
         self.gl_widget.setCursor(Qt.OpenHandCursor)
         self.gl_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.horizontalLayout2.addWidget(self.gl_widget)
@@ -225,8 +284,8 @@ class MainWindow(QMainWindow):
         centralWidget.setLayout(self.verticalLayout)
         self.setCentralWidget(centralWidget)
         self.setWindowTitle("Equirectangular 360° Viewer")
-        self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
-        self.resize(1080,720)
+        self.setWindowIcon(QIcon(":/plugins/GLViewer/icon.png"))
+        self.resize(1080, 720)
 
     def closeEvent(self, event):
         self.map_manager.remove_all_points_from_map()
@@ -237,15 +296,27 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key_C:
             self.gl_widget.show_crosshair = not self.gl_widget.show_crosshair
             self.gl_widget.update()
-            if self.gl_widget2 is not None :
+            if self.gl_widget2 is not None:
                 self.gl_widget2.show_crosshair = not self.gl_widget2.show_crosshair
                 self.gl_widget2.update()
 
     def show_second_view(self):
         self.setCursor(Qt.WaitCursor)
-        if self.gl_widget2 is None :
+        if self.gl_widget2 is None:
             self.comboBox1.setEnabled(False)
-            self.gl_widget2 = GLWidget(self, self.iface, self.url, self.direction, self.map_manager, self.angle_degrees, self.x, self.y, self.params, self.gpkg, 2)
+            self.gl_widget2 = GLWidget(
+                self,
+                self.iface,
+                self.url,
+                self.direction,
+                self.map_manager,
+                self.angle_degrees,
+                self.x,
+                self.y,
+                self.params,
+                self.gpkg,
+                2,
+            )
             self.horizontalLayout2.addWidget(self.gl_widget)
             self.horizontalLayout2.setStretchFactor(self.gl_widget, 1)
             self.horizontalLayout2.addWidget(self.gl_widget2)
@@ -255,7 +326,7 @@ class MainWindow(QMainWindow):
             self.gl_widget2.setCursor(Qt.OpenHandCursor)
             self.map_manager.add_point_to_map(self.pointReal, self.angle_degrees, 2)
 
-        else  :
+        else:
             if self.gl_widget2.isVisible():
                 self.comboBox1.setEnabled(True)
                 self.gl_widget2.hide()
@@ -265,7 +336,9 @@ class MainWindow(QMainWindow):
 
     def save_data(self):
         gap = self.gap_spinbox.value()
-        filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        filename = os.path.join(
+            QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+        )
         connection_params = {
             "gap": gap,
         }
@@ -274,6 +347,7 @@ class MainWindow(QMainWindow):
             connection_params["gap"] = gap
         with open(filename, "w") as f:
             json.dump(connection_params, f)
+
 
 class ColumnSelectionDialog(QDialog):
     def __init__(self, columns, parent=None):
@@ -290,8 +364,10 @@ class ColumnSelectionDialog(QDialog):
         self.yaw_combo.addItems(columns)
         self.link_combo.addItems(columns)
         self.date_combo.addItems(columns)
-        try :
-            filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        try:
+            filename = os.path.join(
+                QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+            )
             with open(filename, "r") as f:
                 connection_params = json.load(f)
                 default_geom = connection_params["geom"]
@@ -306,7 +382,7 @@ class ColumnSelectionDialog(QDialog):
                 self.link_combo.setCurrentIndex(default_link_index)
                 default_date_index = self.date_combo.findText(default_date)
                 self.date_combo.setCurrentIndex(default_date_index)
-        except Exception :
+        except Exception:
             pass
         self.ok_button = QPushButton("OK")
         self.ok_button.clicked.connect(self.accept)
@@ -323,7 +399,7 @@ class ColumnSelectionDialog(QDialog):
         layout.addWidget(self.ok_button)
         self.setLayout(layout)
         self.setFixedWidth(400)
-        self.setWindowIcon(QIcon(':/plugins/GLViewer/icon.png'))
+        self.setWindowIcon(QIcon(":/plugins/GLViewer/icon.png"))
         self.setWindowTitle("Data selection")
 
     def save_data(self):
@@ -337,7 +413,9 @@ class ColumnSelectionDialog(QDialog):
             "link": link,
             "date": date,
         }
-        filename = os.path.join(QgsApplication.qgisSettingsDirPath(), "connection_params.json")
+        filename = os.path.join(
+            QgsApplication.qgisSettingsDirPath(), "connection_params.json"
+        )
         with open(filename, "r") as f:
             connection_params = json.load(f)
             connection_params["geom"] = geom
