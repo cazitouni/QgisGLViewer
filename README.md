@@ -54,3 +54,14 @@ For Fedora :
 sudo dnf install python-pyopengl
 sudo dnf install mesa-libGLU mesa-libGL
 ```
+
+## For MacOS users
+
+Navigate to the symbolic link to Python3 within the QGIS application at /Applications/QGIS.app/Contents/MacOS/bin/python3 to open a python prompt.
+<br>
+Then Enter :
+```
+import os
+os.system('/Applications/QGIS.app/Contents/MacOS/bin/python3 -m pip install pyOpenGL')
+os.system('/Applications/QGIS.app/Contents/MacOS/bin/python3 -m pip install pyOpenGL_accelerate')
+```
