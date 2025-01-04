@@ -54,7 +54,7 @@ import datetime
 import math
 import requests
 
-from .DBHandler import connector, connector_gpkg
+from .DBHandler import connector, connector_gpkg, connector_panoramax
 
 
 class GLWidget(QGLWidget):
@@ -69,7 +69,7 @@ class GLWidget(QGLWidget):
         x,
         y,
         params,
-        gpkg,
+        conntype,
         instance,
     ):
         super().__init__()
@@ -113,7 +113,7 @@ class GLWidget(QGLWidget):
         self.moving = False
         self.direction = angle_degrees
         self.map_manager = map_manager
-        self.gpkg = gpkg
+        self.conntype = conntype
 
     def load_texture(self):
         try:
@@ -234,13 +234,19 @@ class GLWidget(QGLWidget):
             )
             self.x = x
             self.y = y
-            if not self.gpkg:
+            if self.conntype == "PostGIS":
                 self.img, self.dir, self.pointReal, dates, _ = connector(
                     x, y, self.params
                 )
-            else:
+            elif self.conntype == "Geopackage":
                 self.img, self.dir, self.pointReal, dates, _ = connector_gpkg(
                     x, y, self.params
+                )
+            else:
+                self.img, self.dir, self.pointReal, dates, _, index = (
+                    connector_panoramax(
+                        x, y, self.params, self.parent.comboBox1.currentText()
+                    )
                 )
             if self.img != self.url and self.img != 0:
                 self.url = self.img
@@ -287,6 +293,8 @@ class GLWidget(QGLWidget):
                     elif isinstance(date, datetime.date):
                         date = date.strftime("%Y-%m-%d")
                     self.parent.comboBox1.addItem(date)
+            if index:
+                self.parent.comboBox1.setCurrentIndex(index)
             self.parent.comboBox1.currentIndexChanged.connect(
                 lambda index: self.date_change(self.parent.comboBox1.currentText())
             )
@@ -344,13 +352,17 @@ class GLWidget(QGLWidget):
 
     def date_change(self, date_selected):
         self.setCursor(QtCore.Qt.WaitCursor)
-        if not self.gpkg:
+        if self.conntype == "PostGIS":
             self.img, self.dir, self.pointReal, self.dates, _ = connector(
                 self.x, self.y, self.params, date_selected
             )
-        else:
+        elif self.conntype == "Geopackage":
             self.img, self.dir, self.pointReal, self.dates, _ = connector_gpkg(
                 self.x, self.y, self.params, date_selected
+            )
+        else:
+            self.img, self.dir, self.pointReal, self.dates, message, index = (
+                connector_panoramax(self.x, self.y, self.params, date_selected)
             )
         if self.img != self.url and self.img != 0:
             self.url = self.img
@@ -374,4 +386,3 @@ class GLWidget(QGLWidget):
             self.resizeGL(self.width(), self.height())
             self.update()
         self.setCursor(QtCore.Qt.OpenHandCursor)
-

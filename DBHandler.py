@@ -7,6 +7,8 @@ from qgis.core import (
     QgsProject,
 )
 import psycopg2
+import requests
+from datetime import datetime, timedelta
 
 
 def connector(x, y, params, date_selected=None):
@@ -135,3 +137,111 @@ def connector_gpkg(x, y, params, date_selected=None):
         return url, direction, pointReal, dates, None
     else:
         return 0, None, None, None, None
+
+
+from datetime import datetime
+import requests
+from qgis.core import (
+    QgsCoordinateTransform,
+    QgsCoordinateReferenceSystem,
+    QgsPointXY,
+    QgsProject,
+)
+
+
+def connector_panoramax(x, y, params, date_selected=None):
+    transform = QgsCoordinateTransform(
+        QgsProject.instance().crs(),
+        QgsCoordinateReferenceSystem("EPSG:4326"),
+        QgsProject.instance(),
+    )
+    reverse_transform = QgsCoordinateTransform(
+        QgsCoordinateReferenceSystem("EPSG:4326"),
+        QgsProject.instance().crs(),
+        QgsProject.instance(),
+    )
+    x, y = transform.transform(x, y).x(), transform.transform(x, y).y()
+    url = (
+        params["url"]
+        + "/search?&place_distance=0-5&place_position="
+        + str(x)
+        + ","
+        + str(y)
+    )
+    print(url)
+    results = requests.get(url).json()
+    if not results["features"]:
+        return 0, None, None, None, None, None
+    results["features"].sort(
+        key=lambda feature: (
+            parse_datetime(feature["properties"]["datetime"]).date()
+            if feature["properties"].get("datetime")
+            else datetime.min.date()
+        ),
+        reverse=True,
+    )
+    dates = [
+        datetime.fromisoformat(feature["properties"]["datetime"]).strftime(
+            "%d-%m-%Y %H:%M:%S"
+        )
+        for feature in results["features"]
+    ]
+    selected_date_index = 0
+    if date_selected:
+        selected_date = datetime.strptime(date_selected, "%d-%m-%Y %H:%M:%S").date()
+        selected_date_obj = datetime.strptime(date_selected, "%d-%m-%Y %H:%M:%S")
+        if selected_date:
+            try:
+                selected_date_index = dates.index(
+                    selected_date.strftime("%d-%m-%Y %H:%M:%S")
+                )
+            except:
+                selected_date_index = min(
+                    range(len(dates)),
+                    key=lambda i: abs(
+                        datetime.strptime(dates[i], "%d-%m-%Y %H:%M:%S")
+                        - selected_date_obj
+                    ),
+                )
+            matching_results = [
+                feature
+                for feature in results["features"]
+                if datetime.strptime(
+                    feature["properties"]["datetime"], "%Y-%m-%dT%H:%M:%S.%f%z"
+                ).date()
+                == selected_date
+            ]
+            if not matching_results:
+                closest_result = min(
+                    results["features"],
+                    key=lambda feature: abs(
+                        datetime.strptime(
+                            feature["properties"]["datetime"], "%Y-%m-%dT%H:%M:%S.%f%z"
+                        ).date()
+                        - selected_date
+                    ),
+                )
+                matching_results = [closest_result]
+            results["features"] = matching_results
+    url = results["features"][0]["assets"]["hd"]["href"]
+    direction = results["features"][0]["properties"]["view:azimuth"]
+    pointReal = reverse_transform.transform(
+        QgsPointXY(
+            results["features"][0]["geometry"]["coordinates"][0],
+            results["features"][0]["geometry"]["coordinates"][1],
+        )
+    )
+
+    return url, direction, pointReal, dates, None, selected_date_index
+
+
+def parse_datetime(datetime_str):
+    """
+    Tries to parse a datetime string with different formats.
+    """
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S%z"):
+        try:
+            return datetime.strptime(datetime_str, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Unable to parse datetime string: {datetime_str}")
