@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QOpenGLWidget
+from PyQt5.QtGui import QSurfaceFormat
 from OpenGL.GL import (
     glClearColor,
     glEnable,
@@ -30,6 +31,8 @@ from OpenGL.GL import (
     GL_COLOR_BUFFER_BIT,
     GL_RGBA,
     GL_LINES,
+    glGetString,
+    GL_VERSION,
 )
 from OpenGL.GLU import (
     gluNewQuadric,
@@ -72,6 +75,9 @@ class GLWidget(QOpenGLWidget):
         conntype,
         instance,
     ):
+        format = QSurfaceFormat()
+        format.setProfile(QSurfaceFormat.CompatibilityProfile)
+        QSurfaceFormat.setDefaultFormat(format)
         super().__init__(parent)
         self.instance = instance
         self.show_crosshair = False
