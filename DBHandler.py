@@ -23,7 +23,7 @@ def connector(x, y, params, date_selected=None):
     query = (
         f"WITH pt AS (SELECT ST_SetSRID(ST_MakePoint({x}, {y}), {crs}) AS temp_geom)"
         f' SELECT DISTINCT ON ("{date}")'
-        f' "{date}", "{link}", "{yaw}", ST_X("{geom}") AS x, ST_Y("{geom}") AS Y, ST_SRID({geom})'
+        f' "{date}", "{link}", "{yaw}", ST_X("{geom}") AS x, ST_Y("{geom}") AS y, ST_SRID("{geom}")'
         f' FROM "{schema}"."{table}", pt'
         f' WHERE ST_DWithin("{geom}", pt.temp_geom, 5)'
         f' ORDER BY "{date}" DESC, ST_Distance("{geom}", pt.temp_geom)'
@@ -36,34 +36,27 @@ def connector(x, y, params, date_selected=None):
         message = str(e)
         if "Operation on mixed SRID geometries" in message:
             message = " : Project CRS and layer CRS are differents"
+        return 0, None, None, None, message, None
 
-        return 0, None, None, None, message
     data = cursor.fetchall()
     if data:
         dates = [str(date[0]) for date in data]
         if not date_selected or date_selected not in dates:
             date_selected = dates[0]
-            url = data[dates.index(date_selected)][1]
-            direction = float(data[dates.index(date_selected)][2])
-            if data[dates.index(date_selected)][5] == 4326:
-                direction = 360 - (direction - 90)
-            pointReal = QgsPointXY(
-                data[dates.index(date_selected)][3], data[dates.index(date_selected)][4]
-            )
-        else:
-            url = data[dates.index(date_selected)][1]
-            direction = float(data[dates.index(date_selected)][2])
-            if data[dates.index(date_selected)][5] == 4326:
-                direction = 360 - (direction - 90)
-            pointReal = QgsPointXY(
-                data[dates.index(date_selected)][3], data[dates.index(date_selected)][4]
-            )
+        index = dates.index(date_selected)
+        url = data[index][1]
+        direction = float(data[index][2])
+        if data[index][5] == 4326:
+            direction = 360 - (direction - 90)
+        pointReal = QgsPointXY(data[index][3], data[index][4])
     else:
         url = 0
         direction = None
         pointReal = None
         dates = None
-    return url, direction, pointReal, dates, None
+        index = None
+
+    return url, direction, pointReal, dates, None, index
 
 
 def retrieve_columns(schema, table, cursor):
@@ -139,16 +132,6 @@ def connector_gpkg(x, y, params, date_selected=None):
         return 0, None, None, None, None
 
 
-from datetime import datetime
-import requests
-from qgis.core import (
-    QgsCoordinateTransform,
-    QgsCoordinateReferenceSystem,
-    QgsPointXY,
-    QgsProject,
-)
-
-
 def connector_panoramax(x, y, params, date_selected=None):
     transform = QgsCoordinateTransform(
         QgsProject.instance().crs(),
@@ -168,7 +151,6 @@ def connector_panoramax(x, y, params, date_selected=None):
         + ","
         + str(y)
     )
-    print(url)
     results = requests.get(url).json()
     if not results["features"]:
         return 0, None, None, None, None, None

@@ -1,4 +1,4 @@
-import os
+from PyQt5.QtWidgets import QOpenGLWidget
 from OpenGL.GL import (
     glClearColor,
     glEnable,
@@ -39,8 +39,8 @@ from OpenGL.GLU import (
     gluOrtho2D,
 )
 from PyQt5 import QtCore
-from PyQt5.QtOpenGL import QGLWidget
 from PIL import Image
+import requests
 from io import BytesIO
 from qgis.core import (
     Qgis,
@@ -57,7 +57,7 @@ import requests
 from .DBHandler import connector, connector_gpkg, connector_panoramax
 
 
-class GLWidget(QGLWidget):
+class GLWidget(QOpenGLWidget):
     def __init__(
         self,
         parent,
@@ -72,7 +72,7 @@ class GLWidget(QGLWidget):
         conntype,
         instance,
     ):
-        super().__init__()
+        super().__init__(parent)
         self.instance = instance
         self.show_crosshair = False
         self.url = url
@@ -88,7 +88,6 @@ class GLWidget(QGLWidget):
         self.parent.comboBox1.currentIndexChanged.connect(
             lambda index: self.date_change(self.parent.comboBox1.currentText())
         )
-
         try:
             if "http" in self.url:
                 response = requests.get(self.url)
@@ -107,8 +106,6 @@ class GLWidget(QGLWidget):
         self.image_width, self.image_height = self.image.size
         self.yaw = 90 - (direction - ((450 - angle_degrees) % 360))
         self.pitch = 0
-        self.prev_dx = 0
-        self.prev_dy = 0
         self.fov = 60
         self.moving = False
         self.direction = angle_degrees
@@ -129,10 +126,8 @@ class GLWidget(QGLWidget):
 
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
             img_data = image.tobytes("raw", "RGBX", 0, -1)
-
-            texture_id = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, texture_id)
-
+            self.texture_id = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.texture_id)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
             glTexImage2D(
@@ -182,6 +177,10 @@ class GLWidget(QGLWidget):
         glRotatef(90, 0, 0, 1)
 
     def draw_sphere(self):
+        if hasattr(self, "texture_id"):
+            glBindTexture(GL_TEXTURE_2D, self.texture_id)
+        else:
+            print("No texture loaded, drawing without texture.")
         sphere = gluNewQuadric()
         gluQuadricTexture(sphere, True)
         gluSphere(sphere, 1, 100, 100)
@@ -235,11 +234,11 @@ class GLWidget(QGLWidget):
             self.x = x
             self.y = y
             if self.conntype == "PostGIS":
-                self.img, self.dir, self.pointReal, dates, _ = connector(
+                self.img, self.dir, self.pointReal, dates, _, index = connector(
                     x, y, self.params
                 )
             elif self.conntype == "Geopackage":
-                self.img, self.dir, self.pointReal, dates, _ = connector_gpkg(
+                self.img, self.dir, self.pointReal, dates, _, index = connector_gpkg(
                     x, y, self.params
                 )
             else:
@@ -353,15 +352,15 @@ class GLWidget(QGLWidget):
     def date_change(self, date_selected):
         self.setCursor(QtCore.Qt.WaitCursor)
         if self.conntype == "PostGIS":
-            self.img, self.dir, self.pointReal, self.dates, _ = connector(
+            self.img, self.dir, self.pointReal, self.dates, _, _ = connector(
                 self.x, self.y, self.params, date_selected
             )
         elif self.conntype == "Geopackage":
-            self.img, self.dir, self.pointReal, self.dates, _ = connector_gpkg(
+            self.img, self.dir, self.pointReal, self.dates, _, _ = connector_gpkg(
                 self.x, self.y, self.params, date_selected
             )
         else:
-            self.img, self.dir, self.pointReal, self.dates, message, index = (
+            self.img, self.dir, self.pointReal, self.dates, message, _ = (
                 connector_panoramax(self.x, self.y, self.params, date_selected)
             )
         if self.img != self.url and self.img != 0:

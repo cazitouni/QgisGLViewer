@@ -30,13 +30,14 @@ class PointTool(QgsMapTool):
         x = event.pos().x()
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        if self.conntype == "Postgis":
+        if self.conntype == "PostGIS":
             (
                 self.url,
                 self.direction,
                 self.pointReal,
                 self.dates,
                 self.message,
+                self.index,
             ) = connector(self.point.x(), self.point.y(), self.params)
         elif self.conntype == "Geopackage":
             (

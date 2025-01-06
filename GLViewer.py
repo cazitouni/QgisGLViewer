@@ -133,7 +133,9 @@ class GLViewer:
             if isinstance(connection, tuple):
                 if connection[0] == "PostGIS":
                     self.conntype = connection[0]
-                    host, port, database, username, password, schema, table = connection
+                    type, host, port, database, username, password, schema, table = (
+                        connection
+                    )
                     try:
                         conn = psycopg2.connect(
                             host=host,
