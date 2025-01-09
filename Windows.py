@@ -229,9 +229,7 @@ class MainWindow(QMainWindow):
         self.comboBox1 = QComboBox()
         if dates is not None:
             for date in dates:
-                if type(date) == QDate or type(date) == QDateTime:
-                    date = date.toString()
-                elif isinstance(date, datetime.datetime):
+                if isinstance(date, datetime.datetime):
                     date = date.strftime("%Y-%m-%d %H:%M:%S")
                 elif isinstance(date, datetime.date):
                     date = date.strftime("%Y-%m-%d")

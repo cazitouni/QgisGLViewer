@@ -31,8 +31,6 @@ from OpenGL.GL import (
     GL_COLOR_BUFFER_BIT,
     GL_RGBA,
     GL_LINES,
-    glGetString,
-    GL_VERSION,
 )
 from OpenGL.GLU import (
     gluNewQuadric,
@@ -56,6 +54,7 @@ from qgis.core import (
 import datetime
 import math
 import requests
+import os
 
 from .DBHandler import connector, connector_gpkg, connector_panoramax
 
@@ -130,7 +129,7 @@ class GLWidget(QOpenGLWidget):
                     self.url = project_path + self.url
                 image = Image.open(self.url)
 
-            image = image.transpose(Image.FLIP_TOP_BOTTOM)
+            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
             img_data = image.tobytes("raw", "RGBX", 0, -1)
             self.texture_id = glGenTextures(1)
             glBindTexture(GL_TEXTURE_2D, self.texture_id)
@@ -241,11 +240,11 @@ class GLWidget(QOpenGLWidget):
             self.y = y
             if self.conntype == "PostGIS":
                 self.img, self.dir, self.pointReal, dates, _, index = connector(
-                    x, y, self.params
+                    x, y, self.params, self.parent.comboBox1.currentText()
                 )
             elif self.conntype == "Geopackage":
                 self.img, self.dir, self.pointReal, dates, _, index = connector_gpkg(
-                    x, y, self.params
+                    x, y, self.params, self.parent.comboBox1.currentText()
                 )
             else:
                 self.img, self.dir, self.pointReal, dates, _, index = (

@@ -8,7 +8,7 @@ from qgis.core import (
 )
 import psycopg2
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 def connector(x, y, params, date_selected=None):
@@ -86,50 +86,46 @@ def connector_gpkg(x, y, params, date_selected=None):
     yaw = params["yaw"]
     date = params["date"]
     crs = params["crs"]
-    dates = []
-    layer = QgsVectorLayer("{}|layername={}".format(schema, table), "images", "ogr")
-    layer.loadNamedStyle("")
-    if layer.isValid():
-        layer_crs = layer.crs().authid()
-        crs = QgsCoordinateReferenceSystem(crs)
-        transform = QgsCoordinateTransform(
-            crs, QgsCoordinateReferenceSystem("EPSG:4326"), QgsProject.instance()
-        )
-        point = QgsPointXY(x, y)
-        point = transform.transform(point)
-        point_geometry = QgsGeometry.fromPointXY(point)
-        closest_features = []
-        if date_selected is not None:
-            for feature in layer.getFeatures():
-                if feature[date].toString() == date_selected:
-                    closest_features.append(feature)
-                    dates.append(feature[date])
-        else:
-            for feature in layer.getFeatures():
-                distance = point_geometry.distance(feature.geometry())
-                if distance <= 10:
-                    closest_features.append(feature)
-                    dates.append(feature[date])
-        if not closest_features:
-            return 0, None, None, None, None
-        closest_features.sort(key=lambda f: point_geometry.distance(f.geometry()))
-        closest_feature = closest_features[0]
-        closest_features_same_geometry = [
-            f
-            for f in closest_features
-            if f.geometry().equals(closest_feature.geometry())
-        ]
-        closest_features_same_geometry.sort(key=lambda f: f[date], reverse=True)
-        closest_feature = closest_features_same_geometry[0]
-        url = closest_feature[link]
-        direction = float(closest_feature[yaw])
-        pointReal = QgsPointXY(closest_feature.geometry().asPoint())
-        if layer_crs == "EPSG:4326":
-            direction = 360 - (direction - 90)
-        dates = sorted(set(dates), reverse=True)
-        return url, direction, pointReal, dates, None
+    layer_path = f"{schema}|layername={table}"
+    layer = QgsVectorLayer(layer_path, "images", "ogr")
+    if not layer.isValid():
+        return 0, None, None, None, "Invalid GeoPackage layer", None
+    input_crs = QgsCoordinateReferenceSystem(crs)
+    layer_crs = layer.crs()
+    if input_crs != layer_crs:
+        transform = QgsCoordinateTransform(input_crs, layer_crs, QgsProject.instance())
+        point = transform.transform(QgsPointXY(x, y))
     else:
-        return 0, None, None, None, None
+        point = QgsPointXY(x, y)
+    point_geometry = QgsGeometry.fromPointXY(point)
+    nearest_features = {}
+    for feature in layer.getFeatures():
+        geom = feature.geometry()
+        if geom and geom.distance(point_geometry) <= 5:
+            feature_date = str(feature[date].toPyDate())
+            if feature_date not in nearest_features:
+                nearest_features[feature_date] = feature
+            else:
+                current_distance = geom.distance(point_geometry)
+                existing_distance = (
+                    nearest_features[feature_date].geometry().distance(point_geometry)
+                )
+                if current_distance < existing_distance:
+                    nearest_features[feature_date] = feature
+    if not nearest_features:
+        return 0, None, None, None, "No features found within distance", None
+    dates = sorted(nearest_features.keys(), reverse=True)
+    if not date_selected or date_selected not in dates:
+        date_selected = dates[0]
+    selected_feature = nearest_features[date_selected]
+    url = selected_feature[link]
+    direction = float(selected_feature[yaw])
+    if layer_crs.authid() == "EPSG:4326":
+        direction = 360 - (direction - 90)
+    point_real = selected_feature.geometry().asPoint()
+    point_real_xy = QgsPointXY(point_real[0], point_real[1])
+    print(url)
+    return url, direction, point_real_xy, dates, None, dates.index(date_selected)
 
 
 def connector_panoramax(x, y, params, date_selected=None):

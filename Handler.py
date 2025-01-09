@@ -46,6 +46,7 @@ class PointTool(QgsMapTool):
                 self.pointReal,
                 self.dates,
                 self.message,
+                self.index,
             ) = connector_gpkg(self.point.x(), self.point.y(), self.params)
         elif self.conntype == "Panoramax":
             (
