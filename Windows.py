@@ -1,28 +1,27 @@
-from qgis.PyQt.QtWidgets import (
-    QStackedWidget,
-    QSpinBox,
-    QFileDialog,
-    QMainWindow,
-    QHBoxLayout,
-    QComboBox,
-    QVBoxLayout,
-    QWidget,
-    QGridLayout,
-    QPushButton,
-    QLabel,
-    QLineEdit,
-    QDialog,
-    QSizePolicy,
-)
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import Qt, QDate, QDateTime
-
-from qgis.core import QgsApplication
-from .EquiView360 import GLWidget
-import datetime
-
 import json
 import os
+
+from qgis.core import QgsApplication
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .EquiView360 import GLWidget
 
 
 class ConnectionDialog(QDialog):
@@ -98,7 +97,7 @@ class ConnectionDialog(QDialog):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 self.lineEdit_host.setText(connection_params["host"])
                 self.lineEdit_port.setText(connection_params["port"])
@@ -114,7 +113,7 @@ class ConnectionDialog(QDialog):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 self.lineEdit_file.setText(connection_params["file"])
         except FileNotFoundError:
@@ -170,7 +169,7 @@ class ConnectionDialog(QDialog):
             QgsApplication.qgisSettingsDirPath(), "connection_params.json"
         )
         if os.path.exists(filename):
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 existing_params = json.load(f)
             existing_params.update(connection_params)
             with open(filename, "w") as f:
@@ -229,10 +228,6 @@ class MainWindow(QMainWindow):
         self.comboBox1 = QComboBox()
         if dates is not None:
             for date in dates:
-                if isinstance(date, datetime.datetime):
-                    date = date.strftime("%Y-%m-%d %H:%M:%S")
-                elif isinstance(date, datetime.date):
-                    date = date.strftime("%Y-%m-%d")
                 self.comboBox1.addItem(date)
         date_label = QLabel("Date")
         if date_index:
@@ -250,7 +245,7 @@ class MainWindow(QMainWindow):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 default_gap = connection_params["gap"]
                 self.gap_spinbox.setValue(int(default_gap))
@@ -354,7 +349,7 @@ class MainWindow(QMainWindow):
         connection_params = {
             "gap": gap,
         }
-        with open(filename, "r") as f:
+        with open(filename) as f:
             connection_params = json.load(f)
             connection_params["gap"] = gap
         with open(filename, "w") as f:
@@ -380,7 +375,7 @@ class ColumnSelectionDialog(QDialog):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 default_geom = connection_params["geom"]
                 default_yaw = connection_params["yaw"]
@@ -428,7 +423,7 @@ class ColumnSelectionDialog(QDialog):
         filename = os.path.join(
             QgsApplication.qgisSettingsDirPath(), "connection_params.json"
         )
-        with open(filename, "r") as f:
+        with open(filename) as f:
             connection_params = json.load(f)
             connection_params["geom"] = geom
             connection_params["yaw"] = yaw

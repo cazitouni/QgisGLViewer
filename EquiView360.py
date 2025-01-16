@@ -1,60 +1,60 @@
-from PyQt5.QtWidgets import QOpenGLWidget
-from PyQt5.QtGui import QSurfaceFormat
+import datetime
+import math
+import os
+from io import BytesIO
+
+import requests
 from OpenGL.GL import (
-    glClearColor,
-    glEnable,
-    glGenTextures,
+    GL_COLOR_BUFFER_BIT,
+    GL_DEPTH_BUFFER_BIT,
+    GL_LINEAR,
+    GL_LINES,
+    GL_MODELVIEW,
+    GL_PROJECTION,
+    GL_RGBA,
+    GL_TEXTURE_2D,
+    GL_TEXTURE_MAG_FILTER,
+    GL_TEXTURE_MIN_FILTER,
+    GL_UNSIGNED_BYTE,
+    glBegin,
     glBindTexture,
-    glTexImage2D,
-    glTexParameteri,
-    glMatrixMode,
     glClear,
+    glClearColor,
+    glColor3f,
+    glEnable,
+    glEnd,
+    glGenerateMipmap,
+    glGenTextures,
+    glLineWidth,
     glLoadIdentity,
+    glMatrixMode,
+    glPopMatrix,
     glPushMatrix,
     glRotatef,
-    glPopMatrix,
-    glGenerateMipmap,
-    glViewport,
-    glColor3f,
-    glBegin,
-    glLineWidth,
-    glEnd,
+    glTexImage2D,
+    glTexParameteri,
     glVertex2f,
-    GL_TEXTURE_2D,
-    GL_UNSIGNED_BYTE,
-    GL_TEXTURE_MAG_FILTER,
-    GL_LINEAR,
-    GL_TEXTURE_MIN_FILTER,
-    GL_PROJECTION,
-    GL_MODELVIEW,
-    GL_DEPTH_BUFFER_BIT,
-    GL_COLOR_BUFFER_BIT,
-    GL_RGBA,
-    GL_LINES,
+    glViewport,
 )
 from OpenGL.GLU import (
     gluNewQuadric,
+    gluOrtho2D,
     gluPerspective,
     gluQuadricTexture,
     gluSphere,
-    gluOrtho2D,
 )
-from PyQt5 import QtCore
 from PIL import Image
-import requests
-from io import BytesIO
+from PyQt5 import QtCore
+from PyQt5.QtGui import QSurfaceFormat
+from PyQt5.QtWidgets import QOpenGLWidget
 from qgis.core import (
     Qgis,
-    QgsProject,
-    QgsUnitTypes,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsPointXY,
+    QgsProject,
+    QgsUnitTypes,
 )
-import datetime
-import math
-import requests
-import os
 
 from .DBHandler import connector, connector_gpkg, connector_panoramax
 
@@ -129,7 +129,7 @@ class GLWidget(QOpenGLWidget):
                     self.url = project_path + self.url
                 image = Image.open(self.url)
 
-            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            image = image.transpose(Image.FLIP_TOP_BOTTOM)
             img_data = image.tobytes("raw", "RGBX", 0, -1)
             self.texture_id = glGenTextures(1)
             glBindTexture(GL_TEXTURE_2D, self.texture_id)
@@ -267,18 +267,19 @@ class GLWidget(QOpenGLWidget):
                 self.yaw = 90 - (float(self.dir) - ((450 - self.direction) % 360))
                 if "http" in self.url:
                     response = requests.get(self.url)
-                    self.image = Image.open(BytesIO(response.content))
+                    image_source = BytesIO(response.content)
                 else:
                     if self.url.startswith("./"):
                         self.url = self.url[1:]
                         project_path = os.path.dirname(QgsProject.instance().fileName())
                         self.url = project_path + self.url
-                    self.image = Image.open(self.url)
-                self.image_width, self.image_height = self.image.size
-                self.initializeGL()
-                self.paintGL()
-                self.resizeGL(self.width(), self.height())
-                self.update()
+                    image_source = self.url
+                with Image.open(image_source) as image:
+                    self.image_width, self.image_height = image.size
+                    self.initializeGL()
+                    self.paintGL()
+                    self.resizeGL(self.width(), self.height())
+                    self.update()
             else:
                 x, y = self.recalculate_coordinates(
                     self.x, self.y, self.direction, -self.parent.gap_spinbox.value()
@@ -290,7 +291,7 @@ class GLWidget(QOpenGLWidget):
                 self.parent.comboBox1.currentIndexChanged.disconnect()
                 self.parent.comboBox1.clear()
                 for date in dates:
-                    if type(date) == QtCore.QDate or type(date) == QtCore.QDateTime:
+                    if type(date) is QtCore.QDate or type(date) is QtCore.QDateTime:
                         date = date.toString()
                     elif isinstance(date, datetime.datetime):
                         date = date.strftime("%Y-%m-%d %H:%M:%S")
@@ -377,16 +378,17 @@ class GLWidget(QOpenGLWidget):
             self.yaw = 90 - (float(self.dir) - ((450 - self.direction) % 360))
             if "http" in self.url:
                 response = requests.get(self.url)
-                self.image = Image.open(BytesIO(response.content))
+                image_source = BytesIO(response.content)
             else:
                 if self.url.startswith("./"):
                     self.url = self.url[1:]
                     project_path = os.path.dirname(QgsProject.instance().fileName())
                     self.url = project_path + self.url
-                self.image = Image.open(self.url)
-            self.image_width, self.image_height = self.image.size
-            self.initializeGL()
-            self.paintGL()
-            self.resizeGL(self.width(), self.height())
-            self.update()
+                image_source = self.url
+            with Image.open(image_source) as image:
+                self.image_width, self.image_height = image.size
+                self.initializeGL()
+                self.paintGL()
+                self.resizeGL(self.width(), self.height())
+                self.update()
         self.setCursor(QtCore.Qt.OpenHandCursor)

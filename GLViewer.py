@@ -1,31 +1,27 @@
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
-from qgis.PyQt.QtWidgets import QMenu, QAction, QDialog
-from qgis.PyQt.QtGui import QIcon
-from qgis.core import Qgis, QgsProject, QgsField, QgsFields, QgsVectorLayer
+import os
 import sqlite3
 
-from .Handler import PointTool
-from .Windows import MainWindow
-from .Helpers import MapManager
-from .Windows import ConnectionDialog, ColumnSelectionDialog
-from .DBHandler import retrieve_columns, retrieve_columns_gpkg
-
-from .resources import *
-import os
 import psycopg2
+from qgis.core import Qgis, QgsField, QgsFields, QgsProject, QgsVectorLayer
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, QTranslator, QVariant
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QDialog, QMenu
+
+from .DBHandler import retrieve_columns, retrieve_columns_gpkg
+from .Handler import PointTool
+from .Helpers import MapManager
+from .resources import *
+from .Windows import ColumnSelectionDialog, ConnectionDialog, MainWindow
 
 
 class GLViewer:
-
     def __init__(self, iface):
         self.iface = iface
         self.canvas = iface.mapCanvas()
         self.params = None
         self.plugin_dir = os.path.dirname(__file__)
         locale = QSettings().value("locale/userLocale")[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir, "i18n", "GLViewer_{}.qm".format(locale)
-        )
+        locale_path = os.path.join(self.plugin_dir, "i18n", f"GLViewer_{locale}.qm")
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
@@ -99,9 +95,7 @@ class GLViewer:
         if not any(manager.crosspoints for manager in MapManager.instances):
             return
         project_crs = QgsProject.instance().crs().authid()
-        layer = QgsVectorLayer(
-            "Point?crs={}".format(project_crs), "Crosspoints", "memory"
-        )
+        layer = QgsVectorLayer(f"Point?crs={project_crs}", "Crosspoints", "memory")
         layerProvider = layer.dataProvider()
         fields = QgsFields()
         fields.append(QgsField("UUID", QVariant.String))

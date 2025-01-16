@@ -1,9 +1,10 @@
-from qgis.PyQt.QtCore import Qt
-from PyQt5.QtWidgets import QDesktopWidget
-from qgis.core import QgsWkbTypes, Qgis
-from qgis.gui import QgsRubberBand, QgsMapTool
-from qgis.PyQt.QtGui import QColor
 import math
+
+from PyQt5.QtWidgets import QDesktopWidget
+from qgis.core import Qgis, QgsWkbTypes
+from qgis.gui import QgsMapTool, QgsRubberBand
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
 
 from .DBHandler import connector, connector_gpkg, connector_panoramax
 from .Helpers import MapManager

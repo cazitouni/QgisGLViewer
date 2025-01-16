@@ -1,14 +1,15 @@
-from qgis.core import (
-    QgsPointXY,
-    QgsVectorLayer,
-    QgsGeometry,
-    QgsCoordinateTransform,
-    QgsCoordinateReferenceSystem,
-    QgsProject,
-)
+from datetime import datetime
+
 import psycopg2
 import requests
-from datetime import datetime
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsVectorLayer,
+)
 
 
 def connector(x, y, params, date_selected=None):
@@ -21,12 +22,15 @@ def connector(x, y, params, date_selected=None):
     date = params["date"]
     crs = params["crs"]
     query = (
-        f"WITH pt AS (SELECT ST_SetSRID(ST_MakePoint({x}, {y}), {crs}) AS temp_geom)"
-        f' SELECT DISTINCT ON ("{date}")'
-        f' "{date}", "{link}", "{yaw}", ST_X("{geom}") AS x, ST_Y("{geom}") AS y, ST_SRID("{geom}")'
-        f' FROM "{schema}"."{table}", pt'
-        f' WHERE ST_DWithin("{geom}", pt.temp_geom, 5)'
-        f' ORDER BY "{date}" DESC, ST_Distance("{geom}", pt.temp_geom)'
+        f"WITH pt AS ("
+        f"  SELECT ST_SetSRID(ST_MakePoint({x}, {y}), {crs}) AS temp_geom"
+        f") "
+        f'SELECT DISTINCT ON ("{date}") '
+        f'  "{date}", "{link}", "{yaw}", '
+        f'  ST_X("{geom}") AS x, ST_Y("{geom}") AS y, ST_SRID("{geom}") '
+        f'FROM "{schema}"."{table}", pt '
+        f'WHERE ST_DWithin("{geom}", pt.temp_geom, 5) '
+        f'ORDER BY "{date}" DESC, ST_Distance("{geom}", pt.temp_geom)'
     )
     try:
         cursor.execute(query)
@@ -37,7 +41,6 @@ def connector(x, y, params, date_selected=None):
         if "Operation on mixed SRID geometries" in message:
             message = " : Project CRS and layer CRS are differents"
         return 0, None, None, None, message, None
-
     data = cursor.fetchall()
     if data:
         dates = [str(date[0]) for date in data]
@@ -57,26 +60,6 @@ def connector(x, y, params, date_selected=None):
         index = None
 
     return url, direction, pointReal, dates, None, index
-
-
-def retrieve_columns(schema, table, cursor):
-    query = "SELECT column_name FROM information_schema.columns WHERE table_name = %s AND table_schema = %s"
-    cursor.execute(query, (table, schema))
-    columns = [column[0] for column in cursor.fetchall()]
-    cursor.close()
-    return columns
-
-
-def retrieve_columns_gpkg(cursor):
-    cursor.execute("SELECT table_name FROM gpkg_contents")
-    layer = cursor.fetchone()
-    cursor.execute("PRAGMA table_info('{}')".format(layer[0]))
-    results = cursor.fetchall()
-    columns = []
-    for result in results:
-        columns.append(result[1])
-    cursor.close()
-    return columns, layer[0]
 
 
 def connector_gpkg(x, y, params, date_selected=None):
@@ -124,7 +107,7 @@ def connector_gpkg(x, y, params, date_selected=None):
         direction = 360 - (direction - 90)
     point_real = selected_feature.geometry().asPoint()
     point_real_xy = QgsPointXY(point_real[0], point_real[1])
-    print(url)
+
     return url, direction, point_real_xy, dates, None, dates.index(date_selected)
 
 
@@ -150,57 +133,27 @@ def connector_panoramax(x, y, params, date_selected=None):
     results = requests.get(url).json()
     if not results["features"]:
         return 0, None, None, None, None, None
-    results["features"].sort(
-        key=lambda feature: (
-            parse_datetime(feature["properties"]["datetime"]).date()
-            if feature["properties"].get("datetime")
-            else datetime.min.date()
-        ),
-        reverse=True,
-    )
-    dates = [
-        datetime.fromisoformat(feature["properties"]["datetime"]).strftime(
-            "%d-%m-%Y %H:%M:%S"
-        )
-        for feature in results["features"]
-    ]
+    date_to_feature = {}
+    for feature in results["features"]:
+        datetime_str = feature["properties"].get("datetime")
+        if datetime_str:
+            feature_date = datetime.fromisoformat(datetime_str).date()
+            if feature_date not in date_to_feature:
+                date_to_feature[feature_date] = feature
+    unique_dates = sorted(date_to_feature.keys(), reverse=True)
     selected_date_index = 0
     if date_selected:
-        selected_date = datetime.strptime(date_selected, "%d-%m-%Y %H:%M:%S").date()
-        selected_date_obj = datetime.strptime(date_selected, "%d-%m-%Y %H:%M:%S")
-        if selected_date:
-            try:
-                selected_date_index = dates.index(
-                    selected_date.strftime("%d-%m-%Y %H:%M:%S")
-                )
-            except:
-                selected_date_index = min(
-                    range(len(dates)),
-                    key=lambda i: abs(
-                        datetime.strptime(dates[i], "%d-%m-%Y %H:%M:%S")
-                        - selected_date_obj
-                    ),
-                )
-            matching_results = [
-                feature
-                for feature in results["features"]
-                if datetime.strptime(
-                    feature["properties"]["datetime"], "%Y-%m-%dT%H:%M:%S.%f%z"
-                ).date()
-                == selected_date
-            ]
-            if not matching_results:
-                closest_result = min(
-                    results["features"],
-                    key=lambda feature: abs(
-                        datetime.strptime(
-                            feature["properties"]["datetime"], "%Y-%m-%dT%H:%M:%S.%f%z"
-                        ).date()
-                        - selected_date
-                    ),
-                )
-                matching_results = [closest_result]
-            results["features"] = matching_results
+        selected_date = datetime.strptime(date_selected, "%d-%m-%Y").date()
+        if selected_date in date_to_feature:
+            results["features"] = [date_to_feature[selected_date]]
+        else:
+            closest_date = min(unique_dates, key=lambda d: abs(d - selected_date))
+            results["features"] = [date_to_feature[closest_date]]
+        selected_date_index = (
+            unique_dates.index(selected_date) if selected_date in unique_dates else 0
+        )
+    else:
+        results["features"] = [date_to_feature[unique_dates[0]]]
     url = results["features"][0]["assets"]["hd"]["href"]
     direction = results["features"][0]["properties"]["view:azimuth"]
     pointReal = reverse_transform.transform(
@@ -209,17 +162,31 @@ def connector_panoramax(x, y, params, date_selected=None):
             results["features"][0]["geometry"]["coordinates"][1],
         )
     )
+    dates = [str(date.strftime("%d-%m-%Y")) for date in unique_dates]
 
     return url, direction, pointReal, dates, None, selected_date_index
 
 
-def parse_datetime(datetime_str):
-    """
-    Tries to parse a datetime string with different formats.
-    """
-    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S%z"):
-        try:
-            return datetime.strptime(datetime_str, fmt)
-        except ValueError:
-            continue
-    raise ValueError(f"Unable to parse datetime string: {datetime_str}")
+def retrieve_columns(schema, table, cursor):
+    query = (
+        "SELECT column_name "
+        "FROM information_schema.columns "
+        "WHERE table_name = %s"
+        "AND table_schema = %s"
+    )
+    cursor.execute(query, (table, schema))
+    columns = [column[0] for column in cursor.fetchall()]
+    cursor.close()
+    return columns
+
+
+def retrieve_columns_gpkg(cursor):
+    cursor.execute("SELECT table_name FROM gpkg_contents")
+    layer = cursor.fetchone()
+    cursor.execute(f"PRAGMA table_info('{layer[0]}')")
+    results = cursor.fetchall()
+    columns = []
+    for result in results:
+        columns.append(result[1])
+    cursor.close()
+    return columns, layer[0]
