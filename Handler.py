@@ -1,23 +1,24 @@
-from qgis.PyQt.QtCore import Qt
-from PyQt5.QtWidgets import QDesktopWidget
-from qgis.core import QgsWkbTypes, Qgis
-from qgis.gui import QgsRubberBand, QgsMapTool
-from qgis.PyQt.QtGui import QColor
 import math
 
-from .DBHandler import connector, connector_gpkg
+from PyQt5.QtWidgets import QDesktopWidget
+from qgis.core import Qgis, QgsWkbTypes
+from qgis.gui import QgsMapTool, QgsRubberBand
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
+
+from .DBHandler import connector, connector_gpkg, connector_panoramax
 from .Helpers import MapManager
 from .Windows import MainWindow
 
 
 class PointTool(QgsMapTool):
-    def __init__(self, canvas, iface, params, gpkg):
+    def __init__(self, canvas, iface, params, conntype):
         QgsMapTool.__init__(self, canvas)
         self.iface = iface
         self.canvas = canvas
         self.params = params
         self.point = None
-        self.gpkg = gpkg
+        self.conntype = conntype
         self.direction = None
         self.rubberband = QgsRubberBand(self.canvas)
         self.rubberband.setColor(QColor(0, 0, 255))
@@ -30,22 +31,33 @@ class PointTool(QgsMapTool):
         x = event.pos().x()
         y = event.pos().y()
         self.point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        if self.gpkg is False:
+        if self.conntype == "PostGIS":
             (
                 self.url,
                 self.direction,
                 self.pointReal,
                 self.dates,
                 self.message,
+                self.index,
             ) = connector(self.point.x(), self.point.y(), self.params)
-        else:
+        elif self.conntype == "Geopackage":
             (
                 self.url,
                 self.direction,
                 self.pointReal,
                 self.dates,
                 self.message,
+                self.index,
             ) = connector_gpkg(self.point.x(), self.point.y(), self.params)
+        elif self.conntype == "Panoramax":
+            (
+                self.url,
+                self.direction,
+                self.pointReal,
+                self.dates,
+                self.message,
+                self.index,
+            ) = connector_panoramax(self.point.x(), self.point.y(), self.params)
 
     def canvasReleaseEvent(self, event):
         self.iface.mapCanvas().unsetMapTool(self)
@@ -72,8 +84,9 @@ class PointTool(QgsMapTool):
                 self.point.x(),
                 self.point.y(),
                 self.params,
-                self.gpkg,
+                self.conntype,
                 self.dates,
+                self.index,
             )
             screen = QDesktopWidget().screenGeometry()
             size = self.dlg.geometry()

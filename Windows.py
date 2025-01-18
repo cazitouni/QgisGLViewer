@@ -1,37 +1,37 @@
-from qgis.PyQt.QtWidgets import (
-    QStackedWidget,
-    QSpinBox,
-    QFileDialog,
-    QMainWindow,
-    QHBoxLayout,
-    QComboBox,
-    QVBoxLayout,
-    QWidget,
-    QGridLayout,
-    QPushButton,
-    QLabel,
-    QLineEdit,
-    QDialog,
-    QSizePolicy,
-)
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import Qt, QDate, QDateTime
-
-from qgis.core import QgsApplication
-from .EquiView360 import GLWidget
-import datetime
-
 import json
 import os
+
+from qgis.core import QgsApplication
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .EquiView360 import GLWidget
 
 
 class ConnectionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.combo_box = QComboBox()
-        self.combo_box.addItems(["PostGIS", "Geopackage"])
+        self.combo_box.addItems(["Geopackage", "Panoramax", "PostGIS"])
         self.stacked_widget = QStackedWidget()
         self.postgis_widget = QWidget()
+        self.panoramax_widget = QWidget()
         label_host = QLabel("Host:")
         self.lineEdit_host = QLineEdit()
         label_port = QLabel("Port:")
@@ -72,8 +72,9 @@ class ConnectionDialog(QDialog):
         geopackage_grid.addWidget(self.lineEdit_file, 0, 1)
         geopackage_grid.addWidget(button_browse, 0, 2)
         self.geopackage_widget.setLayout(geopackage_grid)
-        self.stacked_widget.addWidget(self.postgis_widget)
         self.stacked_widget.addWidget(self.geopackage_widget)
+        self.stacked_widget.addWidget(self.panoramax_widget)
+        self.stacked_widget.addWidget(self.postgis_widget)
         self.combo_box.currentIndexChanged.connect(self.stacked_widget.setCurrentIndex)
         button_connect = QPushButton("Connect")
         button_cancel = QPushButton("Cancel")
@@ -96,7 +97,7 @@ class ConnectionDialog(QDialog):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 self.lineEdit_host.setText(connection_params["host"])
                 self.lineEdit_port.setText(connection_params["port"])
@@ -112,7 +113,7 @@ class ConnectionDialog(QDialog):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 self.lineEdit_file.setText(connection_params["file"])
         except FileNotFoundError:
@@ -123,6 +124,15 @@ class ConnectionDialog(QDialog):
     def get_connection(self):
         index = self.stacked_widget.currentIndex()
         if index == 0:
+            file = self.lineEdit_file.text()
+            type = "Geopackage"
+            return type, file
+        elif index == 1:
+            url = "https://api.panoramax.xyz/api"
+            type = "Panoramax"
+            return type, url
+        elif index == 2:
+            type = "PostGIS"
             host = self.lineEdit_host.text()
             port = self.lineEdit_port.text()
             database = self.lineEdit_database.text()
@@ -130,14 +140,17 @@ class ConnectionDialog(QDialog):
             schema = self.lineEdit_schema.text()
             table = self.lineEdit_table.text()
             password = self.lineEdit_password.text()
-            return host, port, database, username, password, schema, table
-        elif index == 1:
-            file = self.lineEdit_file.text()
-            return file
+            return type, host, port, database, username, password, schema, table
 
     def save_connection(self):
         index = self.stacked_widget.currentIndex()
         if index == 0:
+            file = self.lineEdit_file.text()
+            connection_params = {"file": file}
+        if index == 1:
+            url = "https://api.panoramax.xyz/api"
+            connection_params = {"url": url}
+        elif index == 2:
             host = self.lineEdit_host.text()
             port = self.lineEdit_port.text()
             database = self.lineEdit_database.text()
@@ -152,14 +165,11 @@ class ConnectionDialog(QDialog):
                 "schema": schema,
                 "table": table,
             }
-        elif index == 1:
-            file = self.lineEdit_file.text()
-            connection_params = {"file": file}
         filename = os.path.join(
             QgsApplication.qgisSettingsDirPath(), "connection_params.json"
         )
         if os.path.exists(filename):
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 existing_params = json.load(f)
             existing_params.update(connection_params)
             with open(filename, "w") as f:
@@ -198,6 +208,7 @@ class MainWindow(QMainWindow):
         params,
         gpkg,
         dates,
+        date_index,
     ):
         super().__init__(iface.mainWindow())
         MainWindow.instances.append(self)
@@ -217,14 +228,10 @@ class MainWindow(QMainWindow):
         self.comboBox1 = QComboBox()
         if dates is not None:
             for date in dates:
-                if type(date) == QDate or type(date) == QDateTime:
-                    date = date.toString()
-                elif isinstance(date, datetime.datetime):
-                    date = date.strftime("%Y-%m-%d %H:%M:%S")
-                elif isinstance(date, datetime.date):
-                    date = date.strftime("%Y-%m-%d")
                 self.comboBox1.addItem(date)
         date_label = QLabel("Date")
+        if date_index:
+            self.comboBox1.setCurrentIndex(date_index)
         self.comboBox1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         horizontalLayout.setStretchFactor(date_label, 0)
         horizontalLayout.addWidget(date_label)
@@ -238,7 +245,7 @@ class MainWindow(QMainWindow):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 default_gap = connection_params["gap"]
                 self.gap_spinbox.setValue(int(default_gap))
@@ -342,7 +349,7 @@ class MainWindow(QMainWindow):
         connection_params = {
             "gap": gap,
         }
-        with open(filename, "r") as f:
+        with open(filename) as f:
             connection_params = json.load(f)
             connection_params["gap"] = gap
         with open(filename, "w") as f:
@@ -368,7 +375,7 @@ class ColumnSelectionDialog(QDialog):
             filename = os.path.join(
                 QgsApplication.qgisSettingsDirPath(), "connection_params.json"
             )
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 connection_params = json.load(f)
                 default_geom = connection_params["geom"]
                 default_yaw = connection_params["yaw"]
@@ -416,7 +423,7 @@ class ColumnSelectionDialog(QDialog):
         filename = os.path.join(
             QgsApplication.qgisSettingsDirPath(), "connection_params.json"
         )
-        with open(filename, "r") as f:
+        with open(filename) as f:
             connection_params = json.load(f)
             connection_params["geom"] = geom
             connection_params["yaw"] = yaw
