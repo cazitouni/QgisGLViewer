@@ -270,6 +270,8 @@ class MapManager:
             feature = QgsFeature()
             geometry = point.asGeometry()
             feature.setGeometry(geometry)
-            feature.setAttributes([str(uuid.uuid4()), point.x(), point.y()])
+            feature.setAttributes(
+                [str(uuid.uuid4()), geometry.asPoint().x(), geometry.asPoint().y()]
+            )
             layerProvider.addFeature(feature)
         layer.updateExtents()
