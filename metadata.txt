@@ -6,7 +6,7 @@
 name=Equirectangular 360° Viewer
 qgisMinimumVersion=3.0
 description=Equirectangular and 360° streetview like image viewer
-version=1.6
+version=1.6.1
 author=Clément Zitouni
 email=cazitouni@metrotopic.net
 
@@ -28,6 +28,7 @@ changelog= V1.1 : fix a postgis connection issue
            V1.4 : Support for relative paths, fixing minor cursor glitch, add inertia effect to the view
            V1.5: Support for 270° images and date change
            V1.6: Panoramax support
+           V1.6.1: Fix zoom in viewer
 
 # Tags are comma separated with spaces allowed
 tags=equirectangular, 360, panorama, streetview, viewer, perspective, opengl
@@ -47,8 +48,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-# category= 
+# category=
 
 # If the plugin can run on QGIS Server.
 server=False
-
