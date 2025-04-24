@@ -111,6 +111,7 @@ class GLWidget(QOpenGLWidget):
         self.image_width, self.image_height = self.image.size
         self.yaw = 90 - (direction - ((450 - angle_degrees) % 360))
         self.pitch = 0
+        self.sensitivity = 1
         self.fov = 60
         self.moving = False
         self.direction = angle_degrees
@@ -165,6 +166,8 @@ class GLWidget(QOpenGLWidget):
         glLoadIdentity()
 
     def paintGL(self):
+        glLoadIdentity()
+        gluPerspective(self.fov, self.width() / self.height(), 0.1, 1000)
         self.render_scene()
 
     def render_scene(self):
@@ -315,8 +318,8 @@ class GLWidget(QOpenGLWidget):
             dy = event.pos().y() - self.mouse_y
             dx *= 0.1
             dy *= 0.1
-            self.yaw -= dx
-            self.pitch -= dy
+            self.yaw -= dx * self.sensitivity
+            self.pitch -= dy * self.sensitivity
             self.pitch = min(max(self.pitch, -90), 90)
             self.mouse_x, self.mouse_y = event.pos().x(), event.pos().y()
             self.direction += dx
@@ -329,9 +332,7 @@ class GLWidget(QOpenGLWidget):
         delta = event.angleDelta().y()
         self.fov -= delta * 0.1
         self.fov = max(30, min(self.fov, 90))
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        gluPerspective(self.fov, self.width() / self.height(), 0.1, 1000)
+        self.sensitivity = self.fov / 60
         self.update()
 
     def recalculate_coordinates(self, x, y, angle, distance):
